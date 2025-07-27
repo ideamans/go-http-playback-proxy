@@ -11,6 +11,8 @@ require (
 	github.com/lqqyt2423/go-mitmproxy v1.8.5
 	github.com/tdewolff/minify/v2 v2.23.10
 	github.com/yosssi/gohtml v0.0.0-20201013000340-ee4748c638f4
+	golang.org/x/net v0.22.0
+	golang.org/x/text v0.14.0
 )
 
 require (
@@ -20,7 +22,5 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tdewolff/parse/v2 v2.8.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
 )

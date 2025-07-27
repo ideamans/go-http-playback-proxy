@@ -39,6 +39,7 @@ type Resource struct {
 	ContentEncoding    *ContentEncodingType `json:"contentEncoding,omitempty"`
 	ContentTypeMime    *string              `json:"contentTypeMime,omitempty"`
 	ContentTypeCharset *string              `json:"contentTypeCharset,omitempty"`
+	ContentCharset     *string              `json:"contentCharset,omitempty"`
 	ContentFilePath    *string              `json:"contentFilePath,omitempty"`
 	ContentUTF8        *string              `json:"contentUtf8,omitempty"`
 	ContentBase64      *string              `json:"contentBase64,omitempty"`
