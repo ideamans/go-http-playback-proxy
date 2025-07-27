@@ -277,6 +277,38 @@ if now.Before(targetSendTime) {
 
 この実装により、元の HTTP 通信のパフォーマンス特性を正確に再現できます。
 
+# 文字コード
+
+HTML と CSS には UTF-8 以外の文字コードが利用されていることがあり、その指定方法には HTTP ヘッダの Content-Type に明示する方法と、ソースコードに明示する方法がある。
+
+- HTML では `<meta charset="...">` タグを使用
+- CSS では `@charset "..."` ルールを使用
+
+なお、JavaScript などにも UTF-8 以外の文字コードが用いられる可能性があるが、今回は HTML と CSS に限定する。
+
+recording で記録したファイルは、編集容易であるように常に UTF-8 で保存するが、playback では元の文字コードを再現する必要がある。
+
+そこで HTML と CSS については recording により inventory.resource とコンテンツファイルを保存するとき、Content-Encoding の圧縮を解いた次に以下の処理を行う。
+
+1. Content-Type ヘッダの charset を取得
+2. コンテンツ内の文字コードを取得
+3. 上記の明示がない、または UTF-8 の場合はここで処理を終了
+4. 取得した文字コードが UTF-8 でない場合、コンテンツを UTF-8 に変換し、ファイルにコンテンツを UTF-8 で保存
+5. Resource の ContentCharset に文字コードを指定して保存
+
+UTF-8 への変換に失敗した場合(非対応の文字コードなど)の場合は、変換前のコンテンツをそのまま保存し、Resource の ContentCharset には'-failed'サフィックスを付加する。例: 'unknown-failed'
+
+一方、playback で PlaybackTransaction に変換する際は、Content-Encoding に基づく圧縮を行う前にこの逆の処理を行う。UTF-8 から元の文字コードへの復元だ。
+
+playback 時は、ContentCharset の値を ContentType ヘッダにも反映する。
+
+## Resource 上の文字コードの使い分け
+
+- ContentTypeCharset HTTP ヘッダ Content-Type に記載されていた文字コード
+- ContentCharset 最終的にコンテンツに使用されていた文字コード
+
+playback で最終的に参考にするのは、`ContentCharset`とする。
+
 # TODO
 
 - [ ] optimize の recording と playback への組み込み

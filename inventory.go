@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -39,12 +40,20 @@ func (pm *PersistenceManager) SaveRecordedTransactions(
 			return fmt.Errorf("failed to convert recording transaction: %w", err)
 		}
 
-		// Save decoded body to contents file
+		// Save decoded body to contents file and get charset information
 		if resource.ContentFilePath != nil {
 			contentsFilePath := filepath.Join(pm.BaseDir, "contents", *resource.ContentFilePath)
-			err = pm.saveDecodedBody(contentsFilePath, &transaction)
+			httpCharset, contentCharset, err := pm.saveDecodedBody(contentsFilePath, &transaction)
 			if err != nil {
 				return fmt.Errorf("failed to save decoded body: %w", err)
+			}
+			
+			// Update resource with charset information
+			if httpCharset != "" {
+				resource.ContentTypeCharset = &httpCharset
+			}
+			if contentCharset != "" {
+				resource.ContentCharset = &contentCharset
 			}
 		}
 
@@ -131,13 +140,13 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 	return resource, nil
 }
 
-// saveDecodedBody saves the decoded body content to the specified path
-func (pm *PersistenceManager) saveDecodedBody(filePath string, transaction *RecordingTransaction) error {
+// saveDecodedBody saves the decoded body content to the specified path and returns charset information
+func (pm *PersistenceManager) saveDecodedBody(filePath string, transaction *RecordingTransaction) (httpCharset, contentCharset string, err error) {
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(filePath)
-	err := os.MkdirAll(dir, 0755)
+	err = os.MkdirAll(dir, 0755)
 	if err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		return "", "", fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
 	// Decode the body if it's compressed
@@ -157,13 +166,21 @@ func (pm *PersistenceManager) saveDecodedBody(filePath string, transaction *Reco
 		}
 	}
 
-	// Write the decoded body to file
-	err = os.WriteFile(filePath, bodyData, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write file %s: %w", filePath, err)
+	// Process charset conversion for HTML/CSS content
+	contentType := transaction.RawHeaders["Content-Type"]
+	processedBody, httpCharset, contentCharset, charsetErr := processCharsetForRecording(contentType, bodyData)
+	if charsetErr != nil {
+		fmt.Printf("Warning: charset processing failed, saving original data: %v\n", charsetErr)
+		processedBody = bodyData
 	}
 
-	return nil
+	// Write the processed body to file (always UTF-8 for storage)
+	err = os.WriteFile(filePath, processedBody, 0644)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to write file %s: %w", filePath, err)
+	}
+
+	return httpCharset, contentCharset, nil
 }
 
 // saveInventoryJSON saves the inventory as JSON
@@ -229,7 +246,7 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 	// Save decoded body to contents file
 	if resource.ContentFilePath != nil {
 		contentsFilePath := filepath.Join(pm.BaseDir, "contents", *resource.ContentFilePath)
-		err = pm.saveDecodedBody(contentsFilePath, transaction)
+		_, _, err = pm.saveDecodedBody(contentsFilePath, transaction)
 		if err != nil {
 			return fmt.Errorf("failed to save decoded body: %w", err)
 		}
@@ -370,13 +387,37 @@ func (pm *PlaybackManager) convertResourceToTransaction(resource *Resource) (*Pl
 	// Create chunks with timing
 	chunks := pm.createBodyChunks(compressedBody, resource)
 
-	// Update Content-Length header
+	// Update Content-Length header and charset
 	rawHeaders := make(HttpHeaders)
 	for k, v := range resource.RawHeaders {
 		rawHeaders[k] = v
 	}
 	if len(compressedBody) > 0 {
 		rawHeaders["Content-Length"] = strconv.Itoa(len(compressedBody))
+	}
+	
+	// Update Content-Type header with charset if restored
+	if resource.ContentCharset != nil && *resource.ContentCharset != "" && !strings.HasSuffix(*resource.ContentCharset, "-failed") {
+		if contentType, exists := rawHeaders["Content-Type"]; exists {
+			// Remove existing charset if present
+			if idx := strings.Index(strings.ToLower(contentType), "charset="); idx != -1 {
+				before := contentType[:idx]
+				after := contentType[idx:]
+				if semiIdx := strings.Index(after, ";"); semiIdx != -1 {
+					after = after[semiIdx:]
+				} else {
+					after = ""
+				}
+				contentType = strings.TrimSpace(before) + after
+			}
+			
+			// Add charset
+			if !strings.HasSuffix(contentType, ";") && contentType != "" {
+				contentType += "; "
+			}
+			contentType += fmt.Sprintf("charset=%s", *resource.ContentCharset)
+			rawHeaders["Content-Type"] = contentType
+		}
 	}
 
 	transaction := &PlaybackTransaction{
@@ -399,6 +440,27 @@ func (pm *PlaybackManager) loadAndCompressContent(resource *Resource) ([]byte, e
 	decodedBody, err := os.ReadFile(contentPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read content file %s: %w", contentPath, err)
+	}
+	
+	// Process charset restoration if needed
+	if resource.ContentCharset != nil && *resource.ContentCharset != "" {
+		// Create a temporary http.Header for charset processing
+		headers := make(http.Header)
+		if resource.ContentTypeMime != nil {
+			contentType := *resource.ContentTypeMime
+			if resource.ContentTypeCharset != nil && *resource.ContentTypeCharset != "" {
+				contentType += "; charset=" + *resource.ContentTypeCharset
+			}
+			headers.Set("Content-Type", contentType)
+		}
+		
+		restoredBody, err := processCharsetForPlayback(decodedBody, *resource.ContentCharset, headers)
+		if err != nil {
+			fmt.Printf("Warning: failed to restore charset for %s: %v\n", resource.URL, err)
+			// Continue with UTF-8 content if restoration fails
+		} else {
+			decodedBody = restoredBody
+		}
 	}
 
 	// If no content encoding specified, return as-is
