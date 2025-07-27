@@ -32,7 +32,7 @@ type Resource struct {
 	Method             string               `json:"method"`
 	URL                string               `json:"url"`
 	TTFBMs             int64                `json:"ttfbMs"`
-	Mbps               *float64             `json:"mbps,omitempty"`
+	MBPS               *float64             `json:"mbps,omitempty"`
 	StatusCode         *int                 `json:"statusCode,omitempty"`
 	ErrorMessage       *string              `json:"errorMessage,omitempty"`
 	RawHeaders         HttpHeaders          `json:"rawHeaders,omitempty"`

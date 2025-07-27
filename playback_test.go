@@ -556,11 +556,3 @@ func TestPlaybackProxy_TimingAccuracy(t *testing.T) {
 	}
 }
 
-// Helper functions
-func stringPtr(s string) *string {
-	return &s
-}
-
-func intPtr(i int) *int {
-	return &i
-}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -24,14 +25,14 @@ func TestPersistenceManager_SaveRecordedTransactions(t *testing.T) {
 	method := "GET"
 	url := "https://example.com/api/data?param=value"
 	statusCode := 200
-	
+
 	headers := HttpHeaders{
 		"Content-Type":     "application/json; charset=utf-8",
 		"Content-Encoding": "gzip",
 	}
-	
+
 	body := []byte("test body content")
-	
+
 	recordingTransaction := RecordingTransaction{
 		Method:           method,
 		URL:              url,
@@ -66,7 +67,7 @@ func TestPersistenceManager_SaveRecordedTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get resource file path: %v", err)
 	}
-	
+
 	contentsPath := filepath.Join(tempDir, "contents", expectedPath)
 	if _, err := os.Stat(contentsPath); os.IsNotExist(err) {
 		t.Fatalf("Contents file was not created at %s", contentsPath)
@@ -77,7 +78,7 @@ func TestPersistenceManager_SaveRecordedTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read saved content: %v", err)
 	}
-	
+
 	if string(savedContent) != string(body) {
 		t.Errorf("Saved content mismatch. Expected: %s, Got: %s", string(body), string(savedContent))
 	}
@@ -228,7 +229,7 @@ func TestPersistenceManager_AppendRecordedTransaction(t *testing.T) {
 
 // Helper function to check if string contains substring
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
 		(len(s) > len(substr) && func() bool {
 			for i := 0; i <= len(s)-len(substr); i++ {
 				if s[i:i+len(substr)] == substr {
@@ -249,31 +250,31 @@ func TestPlaybackManager_LoadPlaybackTransactions(t *testing.T) {
 
 	// Create test content
 	testContent := "Hello, World! This is test content for playback."
-	
+
 	// Create persistence manager and save test data
 	pm := NewPersistenceManager(tempDir)
-	
+
 	method := "GET"
 	url := "https://example.com/test"
 	mbps := 10.0 // 10 Mbps
 	statusCode := 200
-	
+
 	headers := HttpHeaders{
 		"Content-Type":     "text/plain",
 		"Content-Encoding": "gzip",
 	}
-	
+
 	// Encode the test content with gzip
 	encoder, err := CreateEncoder(ContentEncodingGzip, 6)
 	if err != nil {
 		t.Fatalf("Failed to create gzip encoder: %v", err)
 	}
-	
+
 	encodedContent, err := encoder.Encode([]byte(testContent))
 	if err != nil {
 		t.Fatalf("Failed to encode content: %v", err)
 	}
-	
+
 	recordingTransaction := RecordingTransaction{
 		Method:           method,
 		URL:              url,
@@ -303,24 +304,24 @@ func TestPlaybackManager_LoadPlaybackTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to read inventory: %v", err)
 	}
-	
+
 	var inventory Inventory
 	err = json.Unmarshal(data, &inventory)
 	if err != nil {
 		t.Fatalf("Failed to parse inventory: %v", err)
 	}
-	
+
 	// Add Mbps to the resource
 	if len(inventory.Resources) > 0 {
-		inventory.Resources[0].Mbps = &mbps
+		inventory.Resources[0].MBPS = &mbps
 	}
-	
+
 	// Save updated inventory
 	updatedData, err := json.MarshalIndent(inventory, "", "  ")
 	if err != nil {
 		t.Fatalf("Failed to marshal updated inventory: %v", err)
 	}
-	
+
 	err = os.WriteFile(inventoryPath, updatedData, 0644)
 	if err != nil {
 		t.Fatalf("Failed to write updated inventory: %v", err)
@@ -388,7 +389,7 @@ func TestPlaybackManager_ChunkCreation(t *testing.T) {
 	mbps := 8.0 // 8 Mbps
 	resource := &Resource{
 		TTFBMs: 100, // 100ms TTFB
-		Mbps:   &mbps,
+		MBPS:   &mbps,
 	}
 
 	// Test body
@@ -404,7 +405,7 @@ func TestPlaybackManager_ChunkCreation(t *testing.T) {
 		t.Logf("Chunk %d size: %d", i, len(chunk.Chunk))
 		totalSize += len(chunk.Chunk)
 	}
-	
+
 	if totalSize != len(testBody) {
 		t.Errorf("Total chunk size mismatch. Expected: %d, Got: %d", len(testBody), totalSize)
 	}
@@ -424,5 +425,243 @@ func TestPlaybackManager_ChunkCreation(t *testing.T) {
 		if !chunks[i].TargetTime.After(chunks[i-1].TargetTime) {
 			t.Error("Chunk target times should be increasing")
 		}
+	}
+}
+
+func TestPlaybackManager_ContentUTF8(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "content_utf8_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pm := NewPlaybackManager(tempDir)
+
+	// Test ContentUTF8 priority over ContentFilePath
+	utf8Content := "Hello, 世界! This is UTF-8 content."
+	resource := &Resource{
+		Method:          "GET",
+		URL:             "https://example.com/utf8",
+		TTFBMs:          100,
+		ContentUTF8:     &utf8Content,
+		ContentFilePath: stringPtr("should-not-be-used.txt"), // This should be ignored
+	}
+
+	transaction, err := pm.convertResourceToTransaction(resource)
+	if err != nil {
+		t.Fatalf("Failed to convert resource with ContentUTF8: %v", err)
+	}
+
+	// Verify content
+	if len(transaction.Chunks) == 0 {
+		t.Fatalf("Expected chunks to be created from ContentUTF8")
+	}
+
+	// Reconstruct body from chunks
+	var reconstructed []byte
+	for _, chunk := range transaction.Chunks {
+		reconstructed = append(reconstructed, chunk.Chunk...)
+	}
+
+	if string(reconstructed) != utf8Content {
+		t.Errorf("ContentUTF8 content mismatch. Expected: %q, Got: %q", utf8Content, string(reconstructed))
+	}
+}
+
+func TestPlaybackManager_ContentBase64(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "content_base64_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pm := NewPlaybackManager(tempDir)
+
+	// Test ContentBase64 when ContentUTF8 is not available
+	originalContent := "Binary content that was base64 encoded"
+	base64Content := base64.StdEncoding.EncodeToString([]byte(originalContent))
+
+	resource := &Resource{
+		Method:          "GET",
+		URL:             "https://example.com/base64",
+		TTFBMs:          100,
+		ContentBase64:   &base64Content,
+		ContentFilePath: stringPtr("should-not-be-used.txt"), // This should be ignored
+	}
+
+	transaction, err := pm.convertResourceToTransaction(resource)
+	if err != nil {
+		t.Fatalf("Failed to convert resource with ContentBase64: %v", err)
+	}
+
+	// Verify content
+	if len(transaction.Chunks) == 0 {
+		t.Fatalf("Expected chunks to be created from ContentBase64")
+	}
+
+	// Reconstruct body from chunks
+	var reconstructed []byte
+	for _, chunk := range transaction.Chunks {
+		reconstructed = append(reconstructed, chunk.Chunk...)
+	}
+
+	if string(reconstructed) != originalContent {
+		t.Errorf("ContentBase64 content mismatch. Expected: %q, Got: %q", originalContent, string(reconstructed))
+	}
+}
+
+func TestPlaybackManager_ContentPriority(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "content_priority_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pm := NewPlaybackManager(tempDir)
+
+	// Create a file content that should NOT be used
+	contentDir := filepath.Join(tempDir, "contents")
+	os.MkdirAll(contentDir, 0755)
+	fileContent := "This is file content that should be ignored"
+	contentPath := filepath.Join(contentDir, "test.txt")
+	os.WriteFile(contentPath, []byte(fileContent), 0644)
+
+	// Test priority: ContentUTF8 > ContentBase64 > ContentFilePath
+	utf8Content := "UTF-8 has highest priority"
+	base64Content := base64.StdEncoding.EncodeToString([]byte("Base64 content"))
+
+	resource := &Resource{
+		Method:          "GET",
+		URL:             "https://example.com/priority",
+		TTFBMs:          100,
+		ContentUTF8:     &utf8Content,          // Highest priority
+		ContentBase64:   &base64Content,        // Should be ignored
+		ContentFilePath: stringPtr("test.txt"), // Should be ignored
+	}
+
+	transaction, err := pm.convertResourceToTransaction(resource)
+	if err != nil {
+		t.Fatalf("Failed to convert resource with all content types: %v", err)
+	}
+
+	// Verify ContentUTF8 was used
+	var reconstructed []byte
+	for _, chunk := range transaction.Chunks {
+		reconstructed = append(reconstructed, chunk.Chunk...)
+	}
+
+	if string(reconstructed) != utf8Content {
+		t.Errorf("Expected ContentUTF8 to have priority. Expected: %q, Got: %q", utf8Content, string(reconstructed))
+	}
+}
+
+func TestPlaybackManager_EmptyContent(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "empty_content_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pm := NewPlaybackManager(tempDir)
+
+	// Test with no content fields
+	resource := &Resource{
+		Method: "GET",
+		URL:    "https://example.com/empty",
+		TTFBMs: 100,
+		// No ContentUTF8, ContentBase64, or ContentFilePath
+	}
+
+	transaction, err := pm.convertResourceToTransaction(resource)
+	if err != nil {
+		t.Fatalf("Failed to convert resource with no content: %v", err)
+	}
+
+	// Verify empty content results in empty chunks
+	if len(transaction.Chunks) != 0 {
+		t.Errorf("Expected no chunks for empty content, got %d chunks", len(transaction.Chunks))
+	}
+}
+
+func TestPlaybackManager_InvalidBase64(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "invalid_base64_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pm := NewPlaybackManager(tempDir)
+
+	// Test with invalid base64 content
+	invalidBase64 := "This is not valid base64!!!"
+
+	resource := &Resource{
+		Method:        "GET",
+		URL:           "https://example.com/invalid-base64",
+		TTFBMs:        100,
+		ContentBase64: &invalidBase64,
+	}
+
+	transaction, err := pm.convertResourceToTransaction(resource)
+	if err != nil {
+		t.Fatalf("Failed to convert resource with invalid base64: %v", err)
+	}
+
+	// Should fall back to empty content
+	if len(transaction.Chunks) != 0 {
+		t.Errorf("Expected no chunks for invalid base64, got %d chunks", len(transaction.Chunks))
+	}
+}
+
+func TestPlaybackManager_ContentCompression(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "content_compression_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	pm := NewPlaybackManager(tempDir)
+
+	// Test ContentUTF8 with gzip compression
+	utf8Content := "This content should be gzip compressed"
+	gzipEncoding := ContentEncodingGzip
+
+	resource := &Resource{
+		Method:          "GET",
+		URL:             "https://example.com/compressed",
+		TTFBMs:          100,
+		ContentUTF8:     &utf8Content,
+		ContentEncoding: &gzipEncoding,
+	}
+
+	transaction, err := pm.convertResourceToTransaction(resource)
+	if err != nil {
+		t.Fatalf("Failed to convert resource with compression: %v", err)
+	}
+
+	// Verify chunks were created
+	if len(transaction.Chunks) == 0 {
+		t.Fatalf("Expected chunks to be created")
+	}
+
+	// Reconstruct compressed body
+	var compressedBody []byte
+	for _, chunk := range transaction.Chunks {
+		compressedBody = append(compressedBody, chunk.Chunk...)
+	}
+
+	// Decompress and verify
+	decoder, err := CreateDecoder(ContentEncodingGzip)
+	if err != nil {
+		t.Fatalf("Failed to create gzip decoder: %v", err)
+	}
+
+	decompressedBody, err := decoder.Decode(compressedBody)
+	if err != nil {
+		t.Fatalf("Failed to decompress body: %v", err)
+	}
+
+	if string(decompressedBody) != utf8Content {
+		t.Errorf("Decompressed content mismatch. Expected: %q, Got: %q", utf8Content, string(decompressedBody))
 	}
 }

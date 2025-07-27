@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"mime"
@@ -117,7 +118,7 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 		Method:             transaction.Method,
 		URL:                transaction.URL,
 		TTFBMs:             ttfbMs,
-		Mbps:               mbps,
+		MBPS:               mbps,
 		StatusCode:         transaction.StatusCode,
 		ErrorMessage:       transaction.ErrorMessage,
 		RawHeaders:         transaction.RawHeaders,
@@ -143,7 +144,7 @@ func (pm *PersistenceManager) saveDecodedBody(filePath string, transaction *Reco
 	bodyData := transaction.Body
 	if contentEncoding := transaction.RawHeaders["Content-Encoding"]; contentEncoding != "" {
 		encodingType := ContentEncodingType(strings.ToLower(contentEncoding))
-		
+
 		// Only decode if it's not identity encoding
 		if encodingType != ContentEncodingIdentity && encodingType != "" {
 			decodedData, err := DecodeData(bodyData, encodingType)
@@ -196,7 +197,7 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 	entryURL string,
 ) error {
 	inventoryPath := filepath.Join(pm.BaseDir, "inventory.json")
-	
+
 	// Load existing inventory if it exists
 	var inventory Inventory
 	if _, err := os.Stat(inventoryPath); err == nil {
@@ -205,7 +206,7 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 		if err != nil {
 			return fmt.Errorf("failed to read existing inventory: %w", err)
 		}
-		
+
 		err = json.Unmarshal(data, &inventory)
 		if err != nil {
 			return fmt.Errorf("failed to parse existing inventory: %w", err)
@@ -213,8 +214,8 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 	} else {
 		// File doesn't exist, create new inventory
 		inventory = Inventory{
-			EntryURL: &entryURL,
-			Domains:  domains,
+			EntryURL:  &entryURL,
+			Domains:   domains,
 			Resources: []Resource{},
 		}
 	}
@@ -252,26 +253,25 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 // mergeDomains merges two domain slices, avoiding duplicates
 func (pm *PersistenceManager) mergeDomains(existing, new []Domain) []Domain {
 	domainMap := make(map[string]Domain)
-	
+
 	// Add existing domains
 	for _, domain := range existing {
 		domainMap[domain.Name] = domain
 	}
-	
+
 	// Add new domains (will overwrite if same name)
 	for _, domain := range new {
 		domainMap[domain.Name] = domain
 	}
-	
+
 	// Convert back to slice
 	result := make([]Domain, 0, len(domainMap))
 	for _, domain := range domainMap {
 		result = append(result, domain)
 	}
-	
+
 	return result
 }
-
 
 // PlaybackManager handles generating playback transactions from inventory
 type PlaybackManager struct {
@@ -297,7 +297,7 @@ func (pm *PlaybackManager) LoadPlaybackTransactions() ([]PlaybackTransaction, er
 	}
 
 	var transactions []PlaybackTransaction
-	
+
 	// Process each resource
 	for _, resource := range inventory.Resources {
 		transaction, err := pm.convertResourceToTransaction(&resource)
@@ -329,17 +329,42 @@ func (pm *PlaybackManager) loadInventory(inventoryPath string) (*Inventory, erro
 
 // convertResourceToTransaction converts a Resource to PlaybackTransaction
 func (pm *PlaybackManager) convertResourceToTransaction(resource *Resource) (*PlaybackTransaction, error) {
-	// Load content file if specified
+	// Load content based on priority: ContentUTF8 > ContentBase64 > ContentFilePath
 	var compressedBody []byte
 	var err error
-	
-	if resource.ContentFilePath != nil {
+
+	if resource.ContentUTF8 != nil {
+		// Use ContentUTF8 directly as decoded content
+		decodedBody := []byte(*resource.ContentUTF8)
+		compressedBody, err = pm.compressContent(decodedBody, resource)
+		if err != nil {
+			fmt.Printf("Warning: failed to compress ContentUTF8 for %s: %v\n", resource.URL, err)
+			compressedBody = decodedBody // Use uncompressed if compression fails
+		}
+	} else if resource.ContentBase64 != nil {
+		// Decode ContentBase64 and use as content
+		decodedBody, err := pm.decodeBase64Content(*resource.ContentBase64)
+		if err != nil {
+			fmt.Printf("Warning: failed to decode ContentBase64 for %s: %v\n", resource.URL, err)
+			compressedBody = []byte{}
+		} else {
+			compressedBody, err = pm.compressContent(decodedBody, resource)
+			if err != nil {
+				fmt.Printf("Warning: failed to compress ContentBase64 for %s: %v\n", resource.URL, err)
+				compressedBody = decodedBody // Use uncompressed if compression fails
+			}
+		}
+	} else if resource.ContentFilePath != nil {
+		// Load from file path (existing behavior)
 		compressedBody, err = pm.loadAndCompressContent(resource)
 		if err != nil {
 			// Log warning but continue with empty body instead of failing
 			fmt.Printf("Warning: failed to load content for %s: %v\n", resource.URL, err)
 			compressedBody = []byte{}
 		}
+	} else {
+		// No content available, use empty body
+		compressedBody = []byte{}
 	}
 
 	// Create chunks with timing
@@ -398,13 +423,13 @@ func (pm *PlaybackManager) createBodyChunks(body []byte, resource *Resource) []B
 
 	var chunks []BodyChunk
 	totalSize := len(body)
-	
+
 	// Calculate total transfer time from Mbps if available
 	var totalTransferTime time.Duration
-	if resource.Mbps != nil && *resource.Mbps > 0 {
+	if resource.MBPS != nil && *resource.MBPS > 0 {
 		// Convert bytes to bits, then calculate time
 		totalBits := float64(totalSize * 8)
-		totalSeconds := totalBits / (*resource.Mbps * 1024 * 1024) // Mbps to bits per second
+		totalSeconds := totalBits / (*resource.MBPS * 1024 * 1024) // Mbps to bits per second
 		totalTransferTime = time.Duration(totalSeconds * float64(time.Second))
 	} else {
 		// Default to 100ms total transfer time if no Mbps specified
@@ -419,15 +444,15 @@ func (pm *PlaybackManager) createBodyChunks(body []byte, resource *Resource) []B
 		}
 
 		chunk := body[i:end]
-		
+
 		// Calculate target time for this chunk
 		// Time is proportional to the chunk's position in the total body
 		chunkProgress := float64(end) / float64(totalSize)
 		chunkTime := time.Duration(float64(totalTransferTime) * chunkProgress)
-		
+
 		// Target offset is TTFB + chunk time from request start
 		targetOffset := time.Duration(resource.TTFBMs)*time.Millisecond + chunkTime
-		
+
 		// For backward compatibility, also set TargetTime (will be recalculated during playback)
 		targetTime := time.Now().Add(targetOffset)
 
@@ -446,4 +471,29 @@ func (pm *PlaybackManager) SetChunkSize(size int) {
 	if size > 0 {
 		pm.ChunkSize = size
 	}
+}
+
+// decodeBase64Content decodes base64 content
+func (pm *PlaybackManager) decodeBase64Content(base64Content string) ([]byte, error) {
+	decodedData, err := base64.StdEncoding.DecodeString(base64Content)
+	if err != nil {
+		return nil, fmt.Errorf("base64 decode failed: %w", err)
+	}
+	return decodedData, nil
+}
+
+// compressContent compresses content based on resource's content encoding
+func (pm *PlaybackManager) compressContent(decodedBody []byte, resource *Resource) ([]byte, error) {
+	// If no content encoding specified, return as-is
+	if resource.ContentEncoding == nil || *resource.ContentEncoding == ContentEncodingIdentity {
+		return decodedBody, nil
+	}
+
+	// Compress the content using the original encoding
+	compressedBody, err := EncodeData(decodedBody, *resource.ContentEncoding, 6) // Use default compression level
+	if err != nil {
+		return nil, fmt.Errorf("failed to compress content with %s: %w", *resource.ContentEncoding, err)
+	}
+
+	return compressedBody, nil
 }

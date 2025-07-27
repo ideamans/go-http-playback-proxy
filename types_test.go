@@ -9,13 +9,13 @@ func TestResourceJSON(t *testing.T) {
 	statusCode := 200
 	mbps := 10.5
 	contentEncoding := ContentEncodingGzip
-	
+
 	resource := Resource{
 		Method:          "GET",
 		URL:             "https://example.com/api",
 		TTFBMs:          150,
 		StatusCode:      &statusCode,
-		Mbps:            &mbps,
+		MBPS:            &mbps,
 		ContentEncoding: &contentEncoding,
 		RawHeaders:      HttpHeaders{"Content-Type": "application/json"},
 	}
@@ -80,7 +80,7 @@ func TestDomainJSON(t *testing.T) {
 func TestInventoryJSON(t *testing.T) {
 	entryURL := "https://example.com"
 	deviceType := DeviceTypeDesktop
-	
+
 	inventory := Inventory{
 		EntryURL:   &entryURL,
 		DeviceType: &deviceType,
@@ -120,4 +120,3 @@ func TestInventoryJSON(t *testing.T) {
 		t.Errorf("Resources length mismatch: got %d, want %d", len(decoded.Resources), len(inventory.Resources))
 	}
 }
-
