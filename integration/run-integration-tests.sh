@@ -261,6 +261,7 @@ if [ "$RUN_PERFORMANCE" = true ]; then
     fi
 fi
 
+
 # 結果サマリー
 echo ""
 log_info "=========================================="

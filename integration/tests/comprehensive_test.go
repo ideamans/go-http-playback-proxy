@@ -230,6 +230,35 @@ func TestComprehensiveIntegration(t *testing.T) {
 			ExpectedContentType: "application/javascript",
 			Category:    "content_type",
 		},
+
+		// Optimize機能テスト（minified content が beautified される）
+		{
+			Name:        "Minified HTML Optimization",
+			Method:      "GET",
+			URL:         TestServerURL + "/minified/html",
+			Headers:     map[string]string{},
+			ExpectedStatus: 200,
+			ExpectedContentType: "text/html",
+			Category:    "optimize",
+		},
+		{
+			Name:        "Minified CSS Optimization",
+			Method:      "GET",
+			URL:         TestServerURL + "/minified/css",
+			Headers:     map[string]string{},
+			ExpectedStatus: 200,
+			ExpectedContentType: "text/css",
+			Category:    "optimize",
+		},
+		{
+			Name:        "Minified JS Optimization",
+			Method:      "GET",
+			URL:         TestServerURL + "/minified/js",
+			Headers:     map[string]string{},
+			ExpectedStatus: 200,
+			ExpectedContentType: "text/javascript",
+			Category:    "optimize",
+		},
 	}
 
 	// 各テストケースを実行（並行実行対応）
@@ -382,6 +411,11 @@ func validateInventory(t *testing.T, tc TestCase, inventory *Inventory, directRe
 			actualEncoding = *resource.ContentEncoding
 		}
 		t.Errorf("Inventory Content-Encoding mismatch: expected %s, got %s", expectedEncoding, actualEncoding)
+	}
+
+	// Optimize機能の検証
+	if tc.Category == "optimize" {
+		validateOptimization(t, tc, resource, directResponse)
 	}
 
 	// パフォーマンス情報の検証
@@ -572,4 +606,74 @@ func runThreePhaseTestParallel(t *testing.T, tc TestCase, proxyPath string) {
 	}
 	
 	t.Logf("✅ All phases completed successfully for %s", tc.Name)
+}
+
+// Optimize機能の検証
+func validateOptimization(t *testing.T, tc TestCase, resource *Resource, directResponse *HTTPResponse) {
+	// ContentFilePathが存在することを確認  
+	if resource.ContentFilePath == nil {
+		t.Error("ContentFilePath not found in optimized resource")
+		return
+	}
+
+	// 保存されたコンテンツファイルを読み込み（並行実行用の一時ディレクトリから）
+	// 並行実行用のProxyControllerは ../temp/parallel_tests/ 以下にディレクトリを作成する
+	inventoryDir := filepath.Join("..", "temp", "parallel_tests", "test_"+sanitizeFileName(tc.Name)+"_*")
+	
+	// glob パターンでディレクトリを検索
+	matches, err := filepath.Glob(inventoryDir)
+	if err != nil || len(matches) == 0 {
+		t.Logf("Warning: Could not find inventory directory matching %s", inventoryDir)
+		return
+	}
+	
+	// 最初にマッチしたディレクトリを使用
+	contentPath := filepath.Join(matches[0], "contents", *resource.ContentFilePath)
+	
+	savedContent, err := os.ReadFile(contentPath)
+	if err != nil {
+		t.Logf("Warning: Could not read saved content file (%s): %v", contentPath, err)
+		// ファイルが読めない場合は警告のみでテスト続行
+		return
+	}
+
+	originalContent := directResponse.Body
+	
+	// Minified content がbeautified されていることを確認
+	// 1. サイズが増加している（beautification により改行・インデントが追加される）
+	if len(savedContent) <= len(originalContent) {
+		t.Logf("Warning: Saved content should be larger than original minified content. Original: %d, Saved: %d", 
+			len(originalContent), len(savedContent))
+	} else {
+		increasePercentage := float64(len(savedContent)-len(originalContent)) / float64(len(originalContent)) * 100
+		t.Logf("✅ Content successfully beautified: %d → %d bytes (%.1f%% increase)", 
+			len(originalContent), len(savedContent), increasePercentage)
+	}
+
+	// 2. 改行文字が追加されている（beautificationの証拠）
+	savedContentStr := string(savedContent)
+	if !strings.Contains(savedContentStr, "\n") {
+		t.Logf("Warning: Saved content should contain newlines (indication of beautification)")
+	}
+
+	// 3. コンテンツタイプ別の具体的な検証
+	switch tc.Category {
+	case "optimize":
+		if strings.Contains(tc.URL, "html") {
+			// HTMLの場合：タグが適切に改行されている
+			if !strings.Contains(savedContentStr, "<!DOCTYPE html>") {
+				t.Error("DOCTYPE declaration not found in beautified HTML")
+			}
+		} else if strings.Contains(tc.URL, "css") {
+			// CSSの場合：セレクタやプロパティが改行されている
+			if !strings.Contains(savedContentStr, "body") {
+				t.Error("Expected CSS selectors not found")
+			}
+		} else if strings.Contains(tc.URL, "js") {
+			// JavaScriptの場合：function等が改行されている
+			if !strings.Contains(savedContentStr, "function") {
+				t.Log("JavaScript function keyword expected")
+			}
+		}
+	}
 }

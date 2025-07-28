@@ -49,9 +49,11 @@ type Resource struct {
 	TTFBMs            int64   `json:"ttfbMs"`
 	Mbps              *float64 `json:"mbps,omitempty"`
 	ContentType        string  `json:"contentType,omitempty"`
+	ContentTypeMime    *string `json:"contentTypeMime,omitempty"`
 	ContentEncoding    *string `json:"contentEncoding,omitempty"`
 	ContentCharset     *string `json:"contentCharset,omitempty"`
 	ContentTypeCharset *string `json:"contentTypeCharset,omitempty"`
+	Minify             *bool   `json:"minify,omitempty"`
 	ErrorMessage       *string `json:"errorMessage,omitempty"`
 	RawHeaders         map[string]string `json:"rawHeaders,omitempty"`
 	ContentFilePath    *string `json:"contentFilePath,omitempty"`

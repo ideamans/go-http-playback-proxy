@@ -1,0 +1,1 @@
+function sayHello(name){console.log("Hello, "+name+"!");return true;}var globalVar="test";if(globalVar==="test"){sayHello("World");}

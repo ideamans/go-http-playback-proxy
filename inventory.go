@@ -207,6 +207,17 @@ func (pm *PersistenceManager) saveDecodedBody(filePath string, transaction *Reco
 		processedBody = bodyData
 	}
 
+	// Apply beautify optimization if supported content type
+	optimizer := NewContentOptimizer()
+	if optimizer.Accept(contentType) {
+		beautified, beautifyErr := optimizer.Beautify(contentType, string(processedBody))
+		if beautifyErr != nil {
+			fmt.Printf("Warning: beautify processing failed, saving original data: %v\n", beautifyErr)
+		} else {
+			processedBody = []byte(beautified)
+		}
+	}
+
 	// Write the processed body to file (always UTF-8 for storage)
 	err = os.WriteFile(filePath, processedBody, 0644)
 	if err != nil {
@@ -473,6 +484,19 @@ func (pm *PlaybackManager) loadAndCompressContent(resource *Resource) ([]byte, e
 	decodedBody, err := os.ReadFile(contentPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read content file %s: %w", contentPath, err)
+	}
+	
+	// Apply minify optimization if ResourceMinify is true and supported content type
+	if resource.Minify != nil && *resource.Minify && resource.ContentTypeMime != nil {
+		optimizer := NewContentOptimizer()
+		if optimizer.Accept(*resource.ContentTypeMime) {
+			minified, minifyErr := optimizer.Minify(*resource.ContentTypeMime, string(decodedBody))
+			if minifyErr != nil {
+				fmt.Printf("Warning: minify processing failed for %s, using original data: %v\n", resource.URL, minifyErr)
+			} else {
+				decodedBody = []byte(minified)
+			}
+		}
 	}
 	
 	// Process charset restoration if needed
