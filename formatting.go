@@ -30,10 +30,8 @@ const (
 	ContentTypeJavaScript ContentType = "text/javascript"
 )
 
-// OptimizationOptions contains options for content optimization
-type OptimizationOptions struct {
-	Type        OptimizerType
-	ContentType ContentType
+// OptimizerConfig contains configuration for content optimization
+type OptimizerConfig struct {
 	// Beautify options for JavaScript
 	IndentSize  int
 	IndentChar  string
@@ -42,11 +40,9 @@ type OptimizationOptions struct {
 	AddLineNumbers bool
 }
 
-// DefaultOptimizationOptions returns default optimization options
-func DefaultOptimizationOptions() *OptimizationOptions {
-	return &OptimizationOptions{
-		Type:           OptimizerTypeMinify,
-		ContentType:    ContentTypeHTML,
+// DefaultOptimizerConfig returns default optimization configuration
+func DefaultOptimizerConfig() *OptimizerConfig {
+	return &OptimizerConfig{
 		IndentSize:     2,
 		IndentChar:     " ",
 		BraceStyle:     "collapse",
@@ -57,10 +53,11 @@ func DefaultOptimizationOptions() *OptimizationOptions {
 // ContentOptimizer handles content optimization (minify/beautify)
 type ContentOptimizer struct {
 	minifier *minify.M
+	config   *OptimizerConfig
 }
 
-// NewContentOptimizer creates a new content optimizer
-func NewContentOptimizer() *ContentOptimizer {
+// NewContentOptimizer creates a new content optimizer with optional config
+func NewContentOptimizer(config ...*OptimizerConfig) *ContentOptimizer {
 	m := minify.New()
 	
 	// Add minifiers for different content types
@@ -69,32 +66,42 @@ func NewContentOptimizer() *ContentOptimizer {
 	m.AddFunc("text/javascript", js.Minify)
 	m.AddFunc("application/javascript", js.Minify)
 	
+	var cfg *OptimizerConfig
+	if len(config) > 0 && config[0] != nil {
+		cfg = config[0]
+	} else {
+		cfg = DefaultOptimizerConfig()
+	}
+	
 	return &ContentOptimizer{
 		minifier: m,
+		config:   cfg,
 	}
 }
 
-// OptimizeContent optimizes content based on the provided options
-func (co *ContentOptimizer) OptimizeContent(content string, options *OptimizationOptions) (string, error) {
-	if options == nil {
-		options = DefaultOptimizationOptions()
-	}
-
-	switch options.Type {
-	case OptimizerTypeMinify:
-		return co.minifyContent(content, options.ContentType)
-	case OptimizerTypeBeautify:
-		return co.beautifyContent(content, options)
+// Accept checks if the given MIME type is supported for optimization
+func (co *ContentOptimizer) Accept(mimeType string) bool {
+	switch {
+	case strings.Contains(mimeType, "html"):
+		return true
+	case strings.Contains(mimeType, "css"):
+		return true
+	case strings.Contains(mimeType, "javascript") || strings.Contains(mimeType, "ecmascript"):
+		return true
 	default:
-		return "", fmt.Errorf("unsupported optimizer type: %s", options.Type)
+		return false
 	}
 }
 
-// minifyContent minifies the content based on content type
-func (co *ContentOptimizer) minifyContent(content string, contentType ContentType) (string, error) {
-	var buf bytes.Buffer
+// Minify minifies content based on MIME type
+func (co *ContentOptimizer) Minify(mimeType string, source string) (string, error) {
+	contentType := co.mimeToContentType(mimeType)
+	if contentType == "" {
+		return source, nil // Return unchanged for unsupported types
+	}
 	
-	err := co.minifier.Minify(string(contentType), &buf, strings.NewReader(content))
+	var buf bytes.Buffer
+	err := co.minifier.Minify(contentType, &buf, strings.NewReader(source))
 	if err != nil {
 		return "", fmt.Errorf("minification failed: %w", err)
 	}
@@ -102,44 +109,59 @@ func (co *ContentOptimizer) minifyContent(content string, contentType ContentTyp
 	return buf.String(), nil
 }
 
-// beautifyContent beautifies the content based on content type and options
-func (co *ContentOptimizer) beautifyContent(content string, options *OptimizationOptions) (string, error) {
-	switch options.ContentType {
-	case ContentTypeHTML:
-		return co.beautifyHTML(content, options)
-	case ContentTypeCSS:
-		return co.beautifyCSS(content, options)
-	case ContentTypeJavaScript:
-		return co.beautifyJavaScript(content, options)
+// Beautify beautifies content based on MIME type
+func (co *ContentOptimizer) Beautify(mimeType string, source string) (string, error) {
+	switch {
+	case strings.Contains(mimeType, "html"):
+		return co.beautifyHTML(source)
+	case strings.Contains(mimeType, "css"):
+		return co.beautifyCSS(source)
+	case strings.Contains(mimeType, "javascript") || strings.Contains(mimeType, "ecmascript"):
+		return co.beautifyJavaScript(source)
 	default:
-		return "", fmt.Errorf("unsupported content type for beautification: %s", options.ContentType)
+		return source, nil // Return unchanged for unsupported types
 	}
 }
 
+// mimeToContentType converts MIME type to content type string
+func (co *ContentOptimizer) mimeToContentType(mimeType string) string {
+	switch {
+	case strings.Contains(mimeType, "html"):
+		return "text/html"
+	case strings.Contains(mimeType, "css"):
+		return "text/css"
+	case strings.Contains(mimeType, "javascript") || strings.Contains(mimeType, "ecmascript"):
+		return "text/javascript"
+	default:
+		return ""
+	}
+}
+
+
 // beautifyHTML beautifies HTML content
-func (co *ContentOptimizer) beautifyHTML(content string, options *OptimizationOptions) (string, error) {
-	if options.AddLineNumbers {
+func (co *ContentOptimizer) beautifyHTML(content string) (string, error) {
+	if co.config.AddLineNumbers {
 		return gohtml.FormatWithLineNo(content), nil
 	}
 	return gohtml.Format(content), nil
 }
 
 // beautifyCSS beautifies CSS content (basic implementation)
-func (co *ContentOptimizer) beautifyCSS(content string, options *OptimizationOptions) (string, error) {
+func (co *ContentOptimizer) beautifyCSS(content string) (string, error) {
 	// For CSS, we implement a basic beautifier since there's no dedicated Go library
-	return co.formatCSS(content, options.IndentChar, options.IndentSize), nil
+	return co.formatCSS(content, co.config.IndentChar, co.config.IndentSize), nil
 }
 
 // beautifyJavaScript beautifies JavaScript content
-func (co *ContentOptimizer) beautifyJavaScript(content string, options *OptimizationOptions) (string, error) {
+func (co *ContentOptimizer) beautifyJavaScript(content string) (string, error) {
 	jsOptions := jsbeautifier.DefaultOptions()
 	
 	// Configure options - jsbeautifier uses map[string]interface{}
-	jsOptions["indent_size"] = options.IndentSize
-	jsOptions["indent_char"] = options.IndentChar
+	jsOptions["indent_size"] = co.config.IndentSize
+	jsOptions["indent_char"] = co.config.IndentChar
 	
 	// Map brace style
-	switch options.BraceStyle {
+	switch co.config.BraceStyle {
 	case "expand":
 		jsOptions["brace_style"] = "expand"
 	case "collapse":
@@ -245,25 +267,6 @@ func (co *ContentOptimizer) formatCSS(content string, indentChar string, indentS
 	return formatted
 }
 
-// OptimizeByMimeType is a convenience function to optimize content by MIME type
-func (co *ContentOptimizer) OptimizeByMimeType(content string, mimeType string, optimizerType OptimizerType) (string, error) {
-	options := DefaultOptimizationOptions()
-	options.Type = optimizerType
-	
-	// Map MIME types to content types
-	switch {
-	case strings.Contains(mimeType, "html"):
-		options.ContentType = ContentTypeHTML
-	case strings.Contains(mimeType, "css"):
-		options.ContentType = ContentTypeCSS
-	case strings.Contains(mimeType, "javascript") || strings.Contains(mimeType, "ecmascript"):
-		options.ContentType = ContentTypeJavaScript
-	default:
-		return content, nil // Return unchanged for unsupported types
-	}
-	
-	return co.OptimizeContent(content, options)
-}
 
 // GetOptimizationStats returns statistics about the optimization
 func (co *ContentOptimizer) GetOptimizationStats(original, optimized string) map[string]interface{} {

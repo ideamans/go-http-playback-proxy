@@ -13,24 +13,27 @@ func TestNewContentOptimizer(t *testing.T) {
 	if optimizer.minifier == nil {
 		t.Fatal("ContentOptimizer.minifier is nil")
 	}
+	if optimizer.config == nil {
+		t.Fatal("ContentOptimizer.config is nil")
+	}
 }
 
-func TestDefaultOptimizationOptions(t *testing.T) {
-	options := DefaultOptimizationOptions()
-	if options == nil {
-		t.Fatal("DefaultOptimizationOptions() returned nil")
+func TestDefaultOptimizerConfig(t *testing.T) {
+	config := DefaultOptimizerConfig()
+	if config == nil {
+		t.Fatal("DefaultOptimizerConfig() returned nil")
 	}
 	
-	if options.Type != OptimizerTypeMinify {
-		t.Errorf("Expected Type to be %s, got %s", OptimizerTypeMinify, options.Type)
+	if config.IndentSize != 2 {
+		t.Errorf("Expected IndentSize to be 2, got %d", config.IndentSize)
 	}
 	
-	if options.ContentType != ContentTypeHTML {
-		t.Errorf("Expected ContentType to be %s, got %s", ContentTypeHTML, options.ContentType)
+	if config.IndentChar != " " {
+		t.Errorf("Expected IndentChar to be space, got %q", config.IndentChar)
 	}
 	
-	if options.IndentSize != 2 {
-		t.Errorf("Expected IndentSize to be 2, got %d", options.IndentSize)
+	if config.BraceStyle != "collapse" {
+		t.Errorf("Expected BraceStyle to be collapse, got %s", config.BraceStyle)
 	}
 }
 
@@ -48,12 +51,7 @@ func TestHTMLMinification(t *testing.T) {
     </body>
 </html>`
 	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeMinify,
-		ContentType: ContentTypeHTML,
-	}
-	
-	minified, err := optimizer.OptimizeContent(testHTML, options)
+	minified, err := optimizer.Minify("text/html", testHTML)
 	if err != nil {
 		t.Fatalf("HTML minification failed: %v", err)
 	}
@@ -73,12 +71,7 @@ func TestHTMLBeautification(t *testing.T) {
 	
 	testHTML := `<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Hello</h1><p>Test</p></body></html>`
 	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeBeautify,
-		ContentType: ContentTypeHTML,
-	}
-	
-	beautified, err := optimizer.OptimizeContent(testHTML, options)
+	beautified, err := optimizer.Beautify("text/html", testHTML)
 	if err != nil {
 		t.Fatalf("HTML beautification failed: %v", err)
 	}
@@ -94,17 +87,17 @@ func TestHTMLBeautification(t *testing.T) {
 }
 
 func TestHTMLBeautificationWithLineNumbers(t *testing.T) {
-	optimizer := NewContentOptimizer()
+	config := &OptimizerConfig{
+		IndentSize:     2,
+		IndentChar:     " ",
+		BraceStyle:     "collapse",
+		AddLineNumbers: true,
+	}
+	optimizer := NewContentOptimizer(config)
 	
 	testHTML := `<html><body><h1>Test</h1></body></html>`
 	
-	options := &OptimizationOptions{
-		Type:           OptimizerTypeBeautify,
-		ContentType:    ContentTypeHTML,
-		AddLineNumbers: true,
-	}
-	
-	beautified, err := optimizer.OptimizeContent(testHTML, options)
+	beautified, err := optimizer.Beautify("text/html", testHTML)
 	if err != nil {
 		t.Fatalf("HTML beautification with line numbers failed: %v", err)
 	}
@@ -134,12 +127,7 @@ func TestCSSMinification(t *testing.T) {
     margin: 10px;
 }`
 	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeMinify,
-		ContentType: ContentTypeCSS,
-	}
-	
-	minified, err := optimizer.OptimizeContent(testCSS, options)
+	minified, err := optimizer.Minify("text/css", testCSS)
 	if err != nil {
 		t.Fatalf("CSS minification failed: %v", err)
 	}
@@ -159,14 +147,7 @@ func TestCSSBeautification(t *testing.T) {
 	
 	testCSS := `body{margin:0;padding:0;}div{color:red;background:#fff;}`
 	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeBeautify,
-		ContentType: ContentTypeCSS,
-		IndentSize:  2,
-		IndentChar:  " ",
-	}
-	
-	beautified, err := optimizer.OptimizeContent(testCSS, options)
+	beautified, err := optimizer.Beautify("text/css", testCSS)
 	if err != nil {
 		t.Fatalf("CSS beautification failed: %v", err)
 	}
@@ -195,12 +176,7 @@ func TestJavaScriptMinification(t *testing.T) {
     return message;
 }`
 	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeMinify,
-		ContentType: ContentTypeJavaScript,
-	}
-	
-	minified, err := optimizer.OptimizeContent(testJS, options)
+	minified, err := optimizer.Minify("text/javascript", testJS)
 	if err != nil {
 		t.Fatalf("JavaScript minification failed: %v", err)
 	}
@@ -216,19 +192,16 @@ func TestJavaScriptMinification(t *testing.T) {
 }
 
 func TestJavaScriptBeautification(t *testing.T) {
-	optimizer := NewContentOptimizer()
-	
-	testJS := `function test(){var x=1;if(x>0){console.log("positive");}}var global="value";`
-	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeBeautify,
-		ContentType: ContentTypeJavaScript,
+	config := &OptimizerConfig{
 		IndentSize:  4,
 		IndentChar:  " ",
 		BraceStyle:  "collapse",
 	}
+	optimizer := NewContentOptimizer(config)
 	
-	beautified, err := optimizer.OptimizeContent(testJS, options)
+	testJS := `function test(){var x=1;if(x>0){console.log("positive");}}var global="value";`
+	
+	beautified, err := optimizer.Beautify("text/javascript", testJS)
 	if err != nil {
 		t.Fatalf("JavaScript beautification failed: %v", err)
 	}
@@ -244,20 +217,19 @@ func TestJavaScriptBeautification(t *testing.T) {
 }
 
 func TestJavaScriptBeautificationBraceStyles(t *testing.T) {
-	optimizer := NewContentOptimizer()
-	
 	testJS := `function test(){console.log("hello");}`
 	
 	braceStyles := []string{"collapse", "expand", "end-expand"}
 	
 	for _, style := range braceStyles {
-		options := &OptimizationOptions{
-			Type:        OptimizerTypeBeautify,
-			ContentType: ContentTypeJavaScript,
+		config := &OptimizerConfig{
+			IndentSize:  2,
+			IndentChar:  " ",
 			BraceStyle:  style,
 		}
+		optimizer := NewContentOptimizer(config)
 		
-		beautified, err := optimizer.OptimizeContent(testJS, options)
+		beautified, err := optimizer.Beautify("text/javascript", testJS)
 		if err != nil {
 			t.Fatalf("JavaScript beautification with brace style %s failed: %v", style, err)
 		}
@@ -268,55 +240,79 @@ func TestJavaScriptBeautificationBraceStyles(t *testing.T) {
 	}
 }
 
-func TestOptimizeByMimeType(t *testing.T) {
+func TestAcceptMethod(t *testing.T) {
 	optimizer := NewContentOptimizer()
 	
 	testCases := []struct {
-		content   string
-		mimeType  string
-		optType   OptimizerType
-		shouldErr bool
+		mimeType string
+		expected bool
 	}{
-		{
-			content:   `<html><body><h1>Test</h1></body></html>`,
-			mimeType:  "text/html",
-			optType:   OptimizerTypeMinify,
-			shouldErr: false,
-		},
-		{
-			content:   `body { margin: 0; }`,
-			mimeType:  "text/css",
-			optType:   OptimizerTypeMinify,
-			shouldErr: false,
-		},
-		{
-			content:   `function test() { console.log("hello"); }`,
-			mimeType:  "application/javascript",
-			optType:   OptimizerTypeMinify,
-			shouldErr: false,
-		},
-		{
-			content:   `Some plain text`,
-			mimeType:  "text/plain",
-			optType:   OptimizerTypeMinify,
-			shouldErr: false, // Should return unchanged
-		},
+		{"text/html", true},
+		{"text/css", true},
+		{"text/javascript", true},
+		{"application/javascript", true},
+		{"application/ecmascript", true},
+		{"text/plain", false},
+		{"image/png", false},
+		{"application/json", false},
 	}
 	
 	for _, tc := range testCases {
-		result, err := optimizer.OptimizeByMimeType(tc.content, tc.mimeType, tc.optType)
-		
-		if tc.shouldErr && err == nil {
-			t.Errorf("Expected error for mime type %s, but got none", tc.mimeType)
+		result := optimizer.Accept(tc.mimeType)
+		if result != tc.expected {
+			t.Errorf("Accept(%s) = %v, expected %v", tc.mimeType, result, tc.expected)
+		}
+	}
+}
+
+func TestMinifyAndBeautifyMethods(t *testing.T) {
+	optimizer := NewContentOptimizer()
+	
+	testCases := []struct {
+		content  string
+		mimeType string
+	}{
+		{`<html><body><h1>Test</h1></body></html>`, "text/html"},
+		{`body { margin: 0; }`, "text/css"},
+		{`function test() { console.log("hello"); }`, "application/javascript"},
+	}
+	
+	for _, tc := range testCases {
+		// Test Minify
+		minified, err := optimizer.Minify(tc.mimeType, tc.content)
+		if err != nil {
+			t.Errorf("Minify failed for %s: %v", tc.mimeType, err)
+		}
+		if len(minified) > len(tc.content) {
+			t.Errorf("Minified content should not be larger than original for %s", tc.mimeType)
 		}
 		
-		if !tc.shouldErr && err != nil {
-			t.Errorf("Unexpected error for mime type %s: %v", tc.mimeType, err)
+		// Test Beautify
+		beautified, err := optimizer.Beautify(tc.mimeType, tc.content)
+		if err != nil {
+			t.Errorf("Beautify failed for %s: %v", tc.mimeType, err)
 		}
-		
-		if tc.mimeType == "text/plain" && result != tc.content {
-			t.Errorf("Plain text should be returned unchanged")
+		if len(beautified) < len(tc.content) {
+			t.Errorf("Beautified content should not be smaller than original for %s", tc.mimeType)
 		}
+	}
+	
+	// Test unsupported mime type - should return unchanged
+	original := "Some plain text"
+	minified, err := optimizer.Minify("text/plain", original)
+	if err != nil {
+		t.Errorf("Minify should not error for unsupported mime type: %v", err)
+	}
+	if minified != original {
+		t.Errorf("Unsupported mime type should return unchanged content")
+	}
+	
+	beautified, err := optimizer.Beautify("text/plain", original)
+	if err != nil {
+		t.Errorf("Beautify should not error for unsupported mime type: %v", err)
+	}
+	if beautified != original {
+		t.Errorf("Unsupported mime type should return unchanged content")
 	}
 }
 
@@ -351,55 +347,12 @@ func TestGetOptimizationStats(t *testing.T) {
 	}
 }
 
-func TestUnsupportedOptimizerType(t *testing.T) {
-	optimizer := NewContentOptimizer()
-	
-	options := &OptimizationOptions{
-		Type:        "unsupported",
-		ContentType: ContentTypeHTML,
-	}
-	
-	_, err := optimizer.OptimizeContent("<html></html>", options)
-	if err == nil {
-		t.Errorf("Expected error for unsupported optimizer type")
-	}
-	
-	if !strings.Contains(err.Error(), "unsupported optimizer type") {
-		t.Errorf("Error message should mention unsupported optimizer type")
-	}
-}
-
-func TestUnsupportedContentTypeForBeautification(t *testing.T) {
-	optimizer := NewContentOptimizer()
-	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeBeautify,
-		ContentType: "text/unknown",
-	}
-	
-	_, err := optimizer.OptimizeContent("some content", options)
-	if err == nil {
-		t.Errorf("Expected error for unsupported content type")
-	}
-	
-	if !strings.Contains(err.Error(), "unsupported content type for beautification") {
-		t.Errorf("Error message should mention unsupported content type")
-	}
-}
-
 func TestCSSFormattingWithComments(t *testing.T) {
 	optimizer := NewContentOptimizer()
 	
 	testCSS := `/* Header styles */ .header{color:red;} /* Footer styles */ .footer{color:blue;}`
 	
-	options := &OptimizationOptions{
-		Type:        OptimizerTypeBeautify,
-		ContentType: ContentTypeCSS,
-		IndentSize:  2,
-		IndentChar:  " ",
-	}
-	
-	beautified, err := optimizer.OptimizeContent(testCSS, options)
+	beautified, err := optimizer.Beautify("text/css", testCSS)
 	if err != nil {
 		t.Fatalf("CSS beautification with comments failed: %v", err)
 	}

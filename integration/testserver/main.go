@@ -65,6 +65,8 @@ func (ts *TestServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ts.serveStatusTest(w, r, compression, speed)
 	case strings.HasPrefix(r.URL.Path, "/charset/"):
 		ts.serveCharsetTest(w, r, compression, speed)
+	case strings.HasPrefix(r.URL.Path, "/minified/"):
+		ts.serveMinifiedContent(w, r, compression, speed)
 	default:
 		// 存在しないパスの場合の処理
 		if strings.HasPrefix(r.URL.Path, "/api/") {
@@ -497,6 +499,48 @@ func (ts *TestServer) writeWithSpeedLimit(w http.ResponseWriter, data []byte, sp
 			time.Sleep(time.Duration(intervalMs) * time.Millisecond)
 		}
 	}
+}
+
+// serveMinifiedContent serves minified HTML, CSS, JS content for optimize testing
+func (ts *TestServer) serveMinifiedContent(w http.ResponseWriter, r *http.Request, compression string, speed int) {
+	// パスから種類を判定 (/minified/html, /minified/css, /minified/js)
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/minified/"), "/")
+	if len(pathParts) < 1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	contentType := pathParts[0]
+	var fileName string
+	var mimeType string
+	
+	switch contentType {
+	case "html":
+		fileName = "minified.html"
+		mimeType = "text/html; charset=utf-8"
+	case "css":
+		fileName = "minified.css"
+		mimeType = "text/css; charset=utf-8"
+	case "js":
+		fileName = "minified.js"
+		mimeType = "text/javascript; charset=utf-8"
+	default:
+		http.NotFound(w, r)
+		return
+	}
+
+	// ファイル読み込み
+	filePath := filepath.Join(ts.testDataDir, contentType, fileName)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Printf("Failed to read minified file %s: %v", filePath, err)
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set("Cache-Control", "no-cache")
+	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
 
 // 汎用APIハンドラー（存在しないパスも200で応答）
