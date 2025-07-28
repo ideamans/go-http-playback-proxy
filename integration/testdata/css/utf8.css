@@ -1,0 +1,9 @@
+@charset "UTF-8";
+/* UTF-8 CSSファイル */
+.japanese-text {
+    font-family: "ヒラギノ角ゴ Pro", sans-serif;
+    /* 日本語コメント: スタイル定義 */
+}
+.special-chars::before {
+    content: "★☆♪♫";
+}

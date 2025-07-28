@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -82,7 +83,18 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 	transaction *RecordingTransaction,
 ) (*Resource, error) {
 	// Calculate TTFB (Time To First Byte)
-	ttfbMs := transaction.ResponseStarted.Sub(transaction.RequestStarted).Milliseconds()
+	var ttfbMs int64
+	if !transaction.ResponseStarted.IsZero() && !transaction.RequestStarted.IsZero() {
+		ttfbMs = transaction.ResponseStarted.Sub(transaction.RequestStarted).Milliseconds()
+		// Sanity check: TTFB should be positive and reasonable (< 1 hour)
+		if ttfbMs < 0 || ttfbMs > 3600000 {
+			log.Printf("[INVENTORY] Warning: Invalid TTFB %d ms, setting to 0", ttfbMs)
+			ttfbMs = 0
+		}
+	} else {
+		log.Printf("[INVENTORY] Warning: Invalid timestamps, setting TTFB to 0")
+		ttfbMs = 0
+	}
 
 	// Get file path using resource.go functions
 	relativePath, err := GetResourceFilePath(transaction.Method, transaction.URL)
@@ -112,14 +124,35 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 
 	// Calculate Mbps (Megabits per second) from transfer time and body size
 	var mbps *float64
-	if !transaction.ResponseFinished.IsZero() && len(transaction.Body) > 0 {
+	if !transaction.ResponseFinished.IsZero() && !transaction.ResponseStarted.IsZero() && len(transaction.Body) > 0 {
 		transferDuration := transaction.ResponseFinished.Sub(transaction.ResponseStarted)
 		if transferDuration > 0 {
 			// Convert bytes to bits, then to Mbps
 			totalBits := float64(len(transaction.Body) * 8)
 			transferSeconds := transferDuration.Seconds()
 			mbpsValue := totalBits / (transferSeconds * 1024 * 1024) // Convert to Mbps
-			mbps = &mbpsValue
+			// Sanity check: Mbps should be reasonable (< 10 Gbps)
+			if mbpsValue > 0 && mbpsValue < 10000 {
+				mbps = &mbpsValue
+				log.Printf("[INVENTORY] Mbps calculation: %d bytes, %.3fs, %.2f Mbps", 
+					len(transaction.Body), transferSeconds, mbpsValue)
+			} else {
+				log.Printf("[INVENTORY] Warning: Invalid Mbps %.2f, using default", mbpsValue)
+				defaultMbps := 1.0 // Default to 1 Mbps for failed calculations
+				mbps = &defaultMbps
+			}
+		} else {
+			log.Printf("[INVENTORY] Transfer duration is zero or negative: %v", transferDuration)
+			defaultMbps := 1.0 // Default to 1 Mbps for invalid duration
+			mbps = &defaultMbps
+		}
+	} else {
+		log.Printf("[INVENTORY] Mbps calculation skipped: ResponseFinished.IsZero=%v, ResponseStarted.IsZero=%v, Body.len=%d", 
+			transaction.ResponseFinished.IsZero(), transaction.ResponseStarted.IsZero(), len(transaction.Body))
+		// For failed requests, use a default speed to avoid nil Mbps
+		if len(transaction.Body) == 0 {
+			defaultMbps := 0.1 // Default to 0.1 Mbps for empty responses
+			mbps = &defaultMbps
 		}
 	}
 

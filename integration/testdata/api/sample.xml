@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <users>
+        <user id="1">
+            <name>田中太郎</name>
+            <email>tanaka@example.com</email>
+        </user>
+        <user id="2">
+            <name>佐藤花子</name>
+            <email>sato@example.com</email>
+        </user>
+    </users>
+</root>
