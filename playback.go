@@ -26,7 +26,11 @@ type PlaybackPlugin struct {
 
 // NewPlaybackPlugin creates a new playback plugin
 func NewPlaybackPlugin() (*PlaybackPlugin, error) {
-	inventoryDir := "./inventory"
+	return NewPlaybackPluginWithInventoryDir("./inventory")
+}
+
+// NewPlaybackPluginWithInventoryDir creates a new playback plugin with custom inventory directory
+func NewPlaybackPluginWithInventoryDir(inventoryDir string) (*PlaybackPlugin, error) {
 	plugin := &PlaybackPlugin{
 		inventoryDir:   inventoryDir,
 		transactionMap: make(map[string]*PlaybackTransaction),
@@ -277,9 +281,9 @@ func (p *PlaybackPlugin) createErrorResponse(f *proxy.Flow, statusCode int, mess
 }
 
 // StartPlayback starts the playback mode proxy
-func StartPlayback(port int) error {
+func StartPlayback(port int, inventoryDir string) error {
 	// Create playback plugin
-	playbackPlugin, err := NewPlaybackPlugin()
+	playbackPlugin, err := NewPlaybackPluginWithInventoryDir(inventoryDir)
 	if err != nil {
 		return fmt.Errorf("failed to create playback plugin: %w", err)
 	}

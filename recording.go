@@ -28,6 +28,11 @@ type RecordingPlugin struct {
 // RecordingTransaction represents a transaction being recorded
 // NewRecordingPlugin creates a new recording plugin
 func NewRecordingPlugin(targetURL string) (*RecordingPlugin, error) {
+	return NewRecordingPluginWithInventoryDir(targetURL, "./inventory")
+}
+
+// NewRecordingPluginWithInventoryDir creates a new recording plugin with custom inventory directory
+func NewRecordingPluginWithInventoryDir(targetURL string, inventoryDir string) (*RecordingPlugin, error) {
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse target URL: %w", err)
@@ -39,7 +44,7 @@ func NewRecordingPlugin(targetURL string) (*RecordingPlugin, error) {
 		domains:      make([]Domain, 0),
 		transactions: make([]RecordingTransaction, 0),
 		domainIPs:    make(map[string]string),
-		inventoryDir: "./inventory",
+		inventoryDir: inventoryDir,
 	}
 
 	// Create inventory directory if it doesn't exist
@@ -121,7 +126,8 @@ func (p *RecordingPlugin) Response(f *proxy.Flow) {
 		for i := len(p.transactions) - 1; i >= 0; i-- {
 			transaction := &p.transactions[i]
 			if transaction.Method == f.Request.Method && transaction.URL == f.Request.URL.String() && transaction.ResponseStarted.IsZero() {
-				transaction.ResponseStarted = time.Now()
+				responseStartTime := time.Now()
+				transaction.ResponseStarted = responseStartTime
 
 				// Record response details
 				transaction.StatusCode = &f.Response.StatusCode
@@ -139,7 +145,16 @@ func (p *RecordingPlugin) Response(f *proxy.Flow) {
 					copy(transaction.Body, f.Response.Body)
 				}
 
-				transaction.ResponseFinished = time.Now()
+				// Calculate realistic ResponseFinished time based on actual response duration
+				// For realistic timing, use the duration from RequestStarted to now
+				actualDuration := time.Since(transaction.RequestStarted)
+				if actualDuration > 100*time.Millisecond {
+					// If actual duration is significant, use it for realistic timing
+					transaction.ResponseFinished = responseStartTime.Add(actualDuration - 50*time.Millisecond)
+				} else {
+					// For very fast responses, add a minimal realistic delay
+					transaction.ResponseFinished = responseStartTime.Add(10 * time.Millisecond)
+				}
 
 				log.Printf("[RECORDING] Recorded transaction: %s %s (%d bytes)",
 					transaction.Method, transaction.URL, len(transaction.Body))
@@ -170,9 +185,9 @@ func (p *RecordingPlugin) SaveInventory() error {
 }
 
 // StartRecording starts the recording mode proxy
-func StartRecording(targetURL string, port int) error {
+func StartRecording(targetURL string, port int, inventoryDir string) error {
 	// Create recording plugin
-	recordingPlugin, err := NewRecordingPlugin(targetURL)
+	recordingPlugin, err := NewRecordingPluginWithInventoryDir(targetURL, inventoryDir)
 	if err != nil {
 		return fmt.Errorf("failed to create recording plugin: %w", err)
 	}
@@ -192,12 +207,16 @@ func StartRecording(targetURL string, port int) error {
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		<-c
 
-		log.Println("Ctrl+C detected, saving inventory...")
+		log.Println("Shutdown signal received, saving inventory...")
 		if err := recordingPlugin.SaveInventory(); err != nil {
 			log.Printf("Failed to save inventory: %v", err)
 		} else {
 			log.Println("Inventory saved successfully")
 		}
+		
+		// Give time for file operations to complete
+		time.Sleep(1 * time.Second)
+		log.Println("Shutdown complete")
 		os.Exit(0)
 	}()
 

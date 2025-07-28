@@ -1,0 +1,12 @@
+{
+    "users": [
+        {"id": 1, "name": "田中太郎", "email": "tanaka@example.com"},
+        {"id": 2, "name": "佐藤花子", "email": "sato@example.com"},
+        {"id": 3, "name": "山田次郎", "email": "yamada@example.com"}
+    ],
+    "meta": {
+        "total": 3,
+        "page": 1,
+        "timestamp": "2024-01-01T00:00:00Z"
+    }
+}
