@@ -31,12 +31,7 @@ setup-integration:
 # 統合テスト実行
 test-integration: build
 	@echo "統合テストを実行しています..."
-	@cd integration && ./run-integration-tests.sh
-
-# CI用統合テスト実行（データセットアップなし）
-test-integration-ci: build
-	@echo "CI用統合テストを実行しています..."
-	@cd integration && ./run-integration-tests.sh --basic-only --skip-setup
+	@cd integration && ./run-integration-tests.sh --skip-setup --basic-only
 
 # Lighthouse パフォーマンステスト
 lighthouse: build
