@@ -44,14 +44,10 @@ func TestPersistenceManager_SaveRecordedTransactions(t *testing.T) {
 		Body:             body,
 	}
 
-	domains := []Domain{
-		{Name: "example.com", IPAddress: "192.168.1.1"},
-	}
-
 	transactions := []RecordingTransaction{recordingTransaction}
 
 	// Test saving
-	err = pm.SaveRecordedTransactions(transactions, domains, url)
+	err = pm.SaveRecordedTransactions(transactions, url)
 	if err != nil {
 		t.Fatalf("Failed to save recorded transactions: %v", err)
 	}
@@ -174,7 +170,6 @@ func TestPersistenceManager_AppendRecordedTransaction(t *testing.T) {
 		},
 		Body: []byte("page1 content"),
 	}
-	domains1 := []Domain{{Name: "example.com", IPAddress: "192.168.1.1"}}
 
 	// Second transaction
 	statusCode2 := 200
@@ -190,16 +185,14 @@ func TestPersistenceManager_AppendRecordedTransaction(t *testing.T) {
 		},
 		Body: []byte("page2 content"),
 	}
-	domains2 := []Domain{{Name: "api.example.com", IPAddress: "192.168.1.2"}}
-
 	// Append first transaction
-	err = pm.AppendRecordedTransaction(&transaction1, domains1, "https://example.com/page1")
+	err = pm.AppendRecordedTransaction(&transaction1, "https://example.com/page1")
 	if err != nil {
 		t.Fatalf("Failed to append first transaction: %v", err)
 	}
 
 	// Append second transaction
-	err = pm.AppendRecordedTransaction(&transaction2, domains2, "https://example.com/page2")
+	err = pm.AppendRecordedTransaction(&transaction2, "https://example.com/page2")
 	if err != nil {
 		t.Fatalf("Failed to append second transaction: %v", err)
 	}
@@ -218,12 +211,6 @@ func TestPersistenceManager_AppendRecordedTransaction(t *testing.T) {
 	}
 	if !contains(inventoryContent, "page2") {
 		t.Error("Second resource not found in inventory")
-	}
-	if !contains(inventoryContent, "example.com") {
-		t.Error("First domain not found in inventory")
-	}
-	if !contains(inventoryContent, "api.example.com") {
-		t.Error("Second domain not found in inventory")
 	}
 }
 
@@ -286,14 +273,10 @@ func TestPlaybackManager_LoadPlaybackTransactions(t *testing.T) {
 		Body:             encodedContent,
 	}
 
-	domains := []Domain{
-		{Name: "example.com", IPAddress: "192.168.1.1"},
-	}
-
 	transactions := []RecordingTransaction{recordingTransaction}
 
 	// Save the recording transactions
-	err = pm.SaveRecordedTransactions(transactions, domains, url)
+	err = pm.SaveRecordedTransactions(transactions, url)
 	if err != nil {
 		t.Fatalf("Failed to save recorded resources: %v", err)
 	}

@@ -46,18 +46,10 @@ type Resource struct {
 	Minify             *bool                `json:"minify,omitempty"`
 }
 
-// Domain represents a domain with its IP address
-type Domain struct {
-	Name      string `json:"name"`
-	IPAddress string `json:"ipAddress"`
-	LatencyMS int64  `json:"latencyMs,omitempty"` // Latency in milliseconds
-}
-
-// Inventory represents a collection of resources and domains
+// Inventory represents a collection of resources
 type Inventory struct {
 	EntryURL   *string     `json:"entryUrl,omitempty"`
 	DeviceType *DeviceType `json:"deviceType,omitempty"`
-	Domains    []Domain    `json:"domains"`
 	Resources  []Resource  `json:"resources"`
 }
 

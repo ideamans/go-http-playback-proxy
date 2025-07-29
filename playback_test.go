@@ -18,9 +18,6 @@ func TestPlaybackPlugin_LoadInventory(t *testing.T) {
 	// Create sample inventory data
 	inventory := Inventory{
 		EntryURL: stringPtr("https://example.com/"),
-		Domains: []Domain{
-			{Name: "example.com", IPAddress: "127.0.0.1"},
-		},
 		Resources: []Resource{
 			{
 				Method:          "GET",
@@ -164,9 +161,6 @@ func TestPlaybackProxy_EndToEnd(t *testing.T) {
 	// Create sample inventory data with multiple resources
 	inventory := Inventory{
 		EntryURL: stringPtr("https://example.com/"),
-		Domains: []Domain{
-			{Name: "example.com", IPAddress: "93.184.216.34"},
-		},
 		Resources: []Resource{
 			{
 				Method:          "GET",
@@ -293,7 +287,6 @@ func TestPlaybackProxy_StartProxy(t *testing.T) {
 
 	// Create minimal inventory
 	inventory := Inventory{
-		Domains:   []Domain{},
 		Resources: []Resource{},
 	}
 
@@ -334,7 +327,6 @@ func TestPlaybackProxy_ErrorHandling(t *testing.T) {
 
 	// Create inventory with missing content file
 	inventory := Inventory{
-		Domains: []Domain{},
 		Resources: []Resource{
 			{
 				Method:          "GET",
@@ -390,9 +382,6 @@ func TestPlaybackProxy_HTTPIntegration(t *testing.T) {
 	// Create sample inventory data
 	inventory := Inventory{
 		EntryURL: stringPtr("https://httpbin.org/"),
-		Domains: []Domain{
-			{Name: "httpbin.org", IPAddress: "54.230.118.1"},
-		},
 		Resources: []Resource{
 			{
 				Method:     "GET",
@@ -502,7 +491,6 @@ func TestPlaybackProxy_TimingAccuracy(t *testing.T) {
 
 	// Create inventory with different TTFB values
 	inventory := Inventory{
-		Domains: []Domain{},
 		Resources: []Resource{
 			{
 				Method:          "GET",

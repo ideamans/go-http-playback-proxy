@@ -125,11 +125,6 @@ func TestRecordingPlugin_SaveInventory(t *testing.T) {
 
 	plugin.transactions = []RecordingTransaction{transaction1, transaction2}
 
-	// Add test domains
-	plugin.domains = []Domain{
-		{Name: "example.com", IPAddress: "192.168.1.1"},
-	}
-
 	// Save inventory
 	err = plugin.SaveInventory()
 	if err != nil {
@@ -159,13 +154,6 @@ func TestRecordingPlugin_SaveInventory(t *testing.T) {
 		t.Errorf("Expected entry URL %s, got %v", targetURL, inventory.EntryURL)
 	}
 
-	if len(inventory.Domains) != 1 {
-		t.Fatalf("Expected 1 domain, got %d", len(inventory.Domains))
-	}
-
-	if inventory.Domains[0].Name != "example.com" {
-		t.Errorf("Expected domain name example.com, got %s", inventory.Domains[0].Name)
-	}
 
 	if len(inventory.Resources) != 2 {
 		t.Fatalf("Expected 2 resources, got %d", len(inventory.Resources))
@@ -295,37 +283,6 @@ func TestRecordingPlugin_MultipleRequestResponse(t *testing.T) {
 	}
 }
 
-func TestRecordingPlugin_DomainTracking(t *testing.T) {
-	// Create recording plugin
-	targetURL := "https://example.com"
-	plugin, err := NewRecordingPlugin(targetURL)
-	if err != nil {
-		t.Fatalf("Failed to create recording plugin: %v", err)
-	}
-
-	// Test domain recording
-	plugin.recordDomainIP("example.com", "192.168.1.1")
-	plugin.recordDomainIP("cdn.example.com", "192.168.1.2")
-	plugin.recordDomainIP("example.com", "192.168.1.1") // duplicate should not create new entry
-
-	// Verify domains
-	if len(plugin.domains) != 2 {
-		t.Fatalf("Expected 2 domains, got %d", len(plugin.domains))
-	}
-
-	domainMap := make(map[string]string)
-	for _, domain := range plugin.domains {
-		domainMap[domain.Name] = domain.IPAddress
-	}
-
-	if ip, exists := domainMap["example.com"]; !exists || ip != "192.168.1.1" {
-		t.Errorf("Expected example.com -> 192.168.1.1, got %s", ip)
-	}
-
-	if ip, exists := domainMap["cdn.example.com"]; !exists || ip != "192.168.1.2" {
-		t.Errorf("Expected cdn.example.com -> 192.168.1.2, got %s", ip)
-	}
-}
 
 func TestRecordingPlugin_EmptyResponse(t *testing.T) {
 	// Create recording plugin
@@ -445,9 +402,6 @@ func TestRecordingPlugin_Integration(t *testing.T) {
 	// Process response
 	plugin.Response(flow)
 
-	// Add domain
-	plugin.recordDomainIP("httpbin.org", "54.230.96.147")
-
 	// Save inventory
 	err = plugin.SaveInventory()
 	if err != nil {
@@ -486,16 +440,6 @@ func TestRecordingPlugin_Integration(t *testing.T) {
 		t.Errorf("Expected positive TTFB, got %d", resource.TTFBMS)
 	}
 
-	// Verify domain was recorded
-	if len(inventory.Domains) != 1 {
-		t.Fatalf("Expected 1 domain, got %d", len(inventory.Domains))
-	}
-
-	domain := inventory.Domains[0]
-	if domain.Name != "httpbin.org" {
-		t.Errorf("Expected domain httpbin.org, got %s", domain.Name)
-	}
-
-	t.Logf("Integration test completed successfully. Inventory saved with %d resources and %d domains",
-		len(inventory.Resources), len(inventory.Domains))
+	t.Logf("Integration test completed successfully. Inventory saved with %d resources",
+		len(inventory.Resources))
 }

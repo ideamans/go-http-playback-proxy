@@ -39,7 +39,6 @@ type HTTPResponse struct {
 type Inventory struct {
 	EntryURL  *string    `json:"entryUrl,omitempty"`
 	Resources []Resource `json:"resources"`
-	Domains   []Domain   `json:"domains"`
 }
 
 type Resource struct {
@@ -57,11 +56,6 @@ type Resource struct {
 	ErrorMessage       *string           `json:"errorMessage,omitempty"`
 	RawHeaders         map[string]string `json:"rawHeaders,omitempty"`
 	ContentFilePath    *string           `json:"contentFilePath,omitempty"`
-}
-
-type Domain struct {
-	Name      string `json:"name"`
-	IPAddress string `json:"ipAddress"`
 }
 
 func NewProxyController(port int, proxyPath, inventoryDir string) *ProxyController {

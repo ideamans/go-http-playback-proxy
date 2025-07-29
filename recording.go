@@ -18,9 +18,7 @@ type RecordingPlugin struct {
 	BaseLogPlugin
 	targetURL    string
 	targetDomain string
-	domains      []Domain
 	transactions []RecordingTransaction
-	domainIPs    map[string]string
 	mutex        sync.RWMutex
 	inventoryDir string
 }
@@ -41,9 +39,7 @@ func NewRecordingPluginWithInventoryDir(targetURL string, inventoryDir string) (
 	plugin := &RecordingPlugin{
 		targetURL:    targetURL,
 		targetDomain: parsedURL.Host,
-		domains:      make([]Domain, 0),
 		transactions: make([]RecordingTransaction, 0),
-		domainIPs:    make(map[string]string),
 		inventoryDir: inventoryDir,
 	}
 
@@ -57,44 +53,8 @@ func NewRecordingPluginWithInventoryDir(targetURL string, inventoryDir string) (
 
 func (p *RecordingPlugin) ServerConnected(connCtx *proxy.ConnContext) {
 	p.BaseLogPlugin.ServerConnected(connCtx)
-
-	// Record domain IP mapping
-	if connCtx.ServerConn != nil {
-		host := connCtx.ServerConn.Address
-		// For now, we'll get the IP from the address or use a placeholder
-		// The exact IP resolution will be handled by the proxy library
-		p.recordDomainIP(host, "unknown")
-	}
 }
 
-func (p *RecordingPlugin) recordDomainIP(domain, ip string) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	// Check if this domain-IP mapping already exists
-	if existingIP, exists := p.domainIPs[domain]; !exists || existingIP != ip {
-		p.domainIPs[domain] = ip
-
-		// Add to domains slice
-		found := false
-		for i, d := range p.domains {
-			if d.Name == domain {
-				p.domains[i].IPAddress = ip
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			p.domains = append(p.domains, Domain{
-				Name:      domain,
-				IPAddress: ip,
-			})
-		}
-
-		log.Printf("[RECORDING] Domain mapping: %s -> %s", domain, ip)
-	}
-}
 
 func (p *RecordingPlugin) Request(f *proxy.Flow) {
 	p.BaseLogPlugin.Request(f)
@@ -173,13 +133,13 @@ func (p *RecordingPlugin) SaveInventory() error {
 	// Use PersistenceManager to save transactions
 	persistenceManager := NewPersistenceManager(p.inventoryDir)
 	
-	err := persistenceManager.SaveRecordedTransactions(p.transactions, p.domains, p.targetURL)
+	err := persistenceManager.SaveRecordedTransactions(p.transactions, p.targetURL)
 	if err != nil {
 		return fmt.Errorf("failed to save recorded transactions: %w", err)
 	}
 
-	log.Printf("[RECORDING] Saved inventory with %d domains and %d transactions to %s", 
-		len(p.domains), len(p.transactions), p.inventoryDir)
+	log.Printf("[RECORDING] Saved inventory with %d transactions to %s", 
+		len(p.transactions), p.inventoryDir)
 
 	return nil
 }

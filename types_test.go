@@ -47,35 +47,6 @@ func TestResourceJSON(t *testing.T) {
 	}
 }
 
-func TestDomainJSON(t *testing.T) {
-	domain := Domain{
-		Name:      "example.com",
-		IPAddress: "192.168.1.1",
-	}
-
-	// JSON エンコード
-	jsonData, err := json.Marshal(domain)
-	if err != nil {
-		t.Fatalf("JSON marshal error: %v", err)
-	}
-
-	t.Logf("Domain JSON: %s", string(jsonData))
-
-	// JSON デコード
-	var decoded Domain
-	err = json.Unmarshal(jsonData, &decoded)
-	if err != nil {
-		t.Fatalf("JSON unmarshal error: %v", err)
-	}
-
-	// 検証
-	if decoded.Name != domain.Name {
-		t.Errorf("Name mismatch: got %s, want %s", decoded.Name, domain.Name)
-	}
-	if decoded.IPAddress != domain.IPAddress {
-		t.Errorf("IPAddress mismatch: got %s, want %s", decoded.IPAddress, domain.IPAddress)
-	}
-}
 
 func TestInventoryJSON(t *testing.T) {
 	entryURL := "https://example.com"
@@ -84,10 +55,6 @@ func TestInventoryJSON(t *testing.T) {
 	inventory := Inventory{
 		EntryURL:   &entryURL,
 		DeviceType: &deviceType,
-		Domains: []Domain{
-			{Name: "example.com", IPAddress: "192.168.1.1"},
-			{Name: "cdn.example.com", IPAddress: "192.168.1.2"},
-		},
 		Resources: []Resource{
 			{Method: "GET", URL: "https://example.com/", TTFBMS: 100},
 			{Method: "GET", URL: "https://example.com/style.css", TTFBMS: 50},
@@ -112,9 +79,6 @@ func TestInventoryJSON(t *testing.T) {
 	// 検証
 	if *decoded.EntryURL != *inventory.EntryURL {
 		t.Errorf("EntryURL mismatch: got %s, want %s", *decoded.EntryURL, *inventory.EntryURL)
-	}
-	if len(decoded.Domains) != len(inventory.Domains) {
-		t.Errorf("Domains length mismatch: got %d, want %d", len(decoded.Domains), len(inventory.Domains))
 	}
 	if len(decoded.Resources) != len(inventory.Resources) {
 		t.Errorf("Resources length mismatch: got %d, want %d", len(decoded.Resources), len(inventory.Resources))

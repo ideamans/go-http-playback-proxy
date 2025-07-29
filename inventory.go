@@ -26,10 +26,9 @@ func NewPersistenceManager(baseDir string) *PersistenceManager {
 	}
 }
 
-// SaveRecordedTransactions saves RecordingTransaction and Domains to the specified directory
+// SaveRecordedTransactions saves RecordingTransaction to the specified directory
 func (pm *PersistenceManager) SaveRecordedTransactions(
 	transactions []RecordingTransaction,
-	domains []Domain,
 	entryURL string,
 ) error {
 	var resources []Resource
@@ -64,7 +63,6 @@ func (pm *PersistenceManager) SaveRecordedTransactions(
 	// Create inventory
 	inventory := Inventory{
 		EntryURL:  &entryURL,
-		Domains:   domains,
 		Resources: resources,
 	}
 
@@ -254,7 +252,6 @@ func (pm *PersistenceManager) saveInventoryJSON(filePath string, inventory *Inve
 // AppendRecordedTransaction appends a new transaction to an existing inventory
 func (pm *PersistenceManager) AppendRecordedTransaction(
 	transaction *RecordingTransaction,
-	domains []Domain,
 	entryURL string,
 ) error {
 	inventoryPath := filepath.Join(pm.BaseDir, "inventory.json")
@@ -276,7 +273,6 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 		// File doesn't exist, create new inventory
 		inventory = Inventory{
 			EntryURL:  &entryURL,
-			Domains:   domains,
 			Resources: []Resource{},
 		}
 	}
@@ -299,9 +295,6 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 	// Add resource to inventory
 	inventory.Resources = append(inventory.Resources, *resource)
 
-	// Merge domains (avoid duplicates)
-	inventory.Domains = pm.mergeDomains(inventory.Domains, domains)
-
 	// Save updated inventory
 	err = pm.saveInventoryJSON(inventoryPath, &inventory)
 	if err != nil {
@@ -311,28 +304,6 @@ func (pm *PersistenceManager) AppendRecordedTransaction(
 	return nil
 }
 
-// mergeDomains merges two domain slices, avoiding duplicates
-func (pm *PersistenceManager) mergeDomains(existing, new []Domain) []Domain {
-	domainMap := make(map[string]Domain)
-
-	// Add existing domains
-	for _, domain := range existing {
-		domainMap[domain.Name] = domain
-	}
-
-	// Add new domains (will overwrite if same name)
-	for _, domain := range new {
-		domainMap[domain.Name] = domain
-	}
-
-	// Convert back to slice
-	result := make([]Domain, 0, len(domainMap))
-	for _, domain := range domainMap {
-		result = append(result, domain)
-	}
-
-	return result
-}
 
 // PlaybackManager handles generating playback transactions from inventory
 type PlaybackManager struct {
