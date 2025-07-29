@@ -388,7 +388,7 @@ func TestPlaybackManager_ChunkCreation(t *testing.T) {
 	// Create test resource
 	mbps := 8.0 // 8 Mbps
 	resource := &Resource{
-		TTFBMs: 100, // 100ms TTFB
+		TTFBMS: 100, // 100ms TTFB
 		MBPS:   &mbps,
 	}
 
@@ -442,7 +442,7 @@ func TestPlaybackManager_ContentUTF8(t *testing.T) {
 	resource := &Resource{
 		Method:          "GET",
 		URL:             "https://example.com/utf8",
-		TTFBMs:          100,
+		TTFBMS:          100,
 		ContentUTF8:     &utf8Content,
 		ContentFilePath: stringPtr("should-not-be-used.txt"), // This should be ignored
 	}
@@ -484,7 +484,7 @@ func TestPlaybackManager_ContentBase64(t *testing.T) {
 	resource := &Resource{
 		Method:          "GET",
 		URL:             "https://example.com/base64",
-		TTFBMs:          100,
+		TTFBMS:          100,
 		ContentBase64:   &base64Content,
 		ContentFilePath: stringPtr("should-not-be-used.txt"), // This should be ignored
 	}
@@ -533,7 +533,7 @@ func TestPlaybackManager_ContentPriority(t *testing.T) {
 	resource := &Resource{
 		Method:          "GET",
 		URL:             "https://example.com/priority",
-		TTFBMs:          100,
+		TTFBMS:          100,
 		ContentUTF8:     &utf8Content,          // Highest priority
 		ContentBase64:   &base64Content,        // Should be ignored
 		ContentFilePath: stringPtr("test.txt"), // Should be ignored
@@ -568,7 +568,7 @@ func TestPlaybackManager_EmptyContent(t *testing.T) {
 	resource := &Resource{
 		Method: "GET",
 		URL:    "https://example.com/empty",
-		TTFBMs: 100,
+		TTFBMS: 100,
 		// No ContentUTF8, ContentBase64, or ContentFilePath
 	}
 
@@ -598,7 +598,7 @@ func TestPlaybackManager_InvalidBase64(t *testing.T) {
 	resource := &Resource{
 		Method:        "GET",
 		URL:           "https://example.com/invalid-base64",
-		TTFBMs:        100,
+		TTFBMS:        100,
 		ContentBase64: &invalidBase64,
 	}
 
@@ -629,7 +629,7 @@ func TestPlaybackManager_ContentCompression(t *testing.T) {
 	resource := &Resource{
 		Method:          "GET",
 		URL:             "https://example.com/compressed",
-		TTFBMs:          100,
+		TTFBMS:          100,
 		ContentUTF8:     &utf8Content,
 		ContentEncoding: &gzipEncoding,
 	}

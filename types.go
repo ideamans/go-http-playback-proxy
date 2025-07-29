@@ -31,7 +31,7 @@ const (
 type Resource struct {
 	Method             string               `json:"method"`
 	URL                string               `json:"url"`
-	TTFBMs             int64                `json:"ttfbMs"`
+	TTFBMS             int64                `json:"ttfbMs"`
 	MBPS               *float64             `json:"mbps,omitempty"`
 	StatusCode         *int                 `json:"statusCode,omitempty"`
 	ErrorMessage       *string              `json:"errorMessage,omitempty"`
@@ -50,6 +50,7 @@ type Resource struct {
 type Domain struct {
 	Name      string `json:"name"`
 	IPAddress string `json:"ipAddress"`
+	LatencyMS int64  `json:"latencyMs,omitempty"` // Latency in milliseconds
 }
 
 // Inventory represents a collection of resources and domains

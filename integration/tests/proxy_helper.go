@@ -17,10 +17,10 @@ import (
 
 // プロキシ制御ヘルパー
 type ProxyController struct {
-	Port        int
-	ProxyPath   string
+	Port         int
+	ProxyPath    string
 	InventoryDir string
-	Process     *exec.Cmd
+	Process      *exec.Cmd
 }
 
 // テスト用の型定義は後で統一定義される
@@ -43,20 +43,20 @@ type Inventory struct {
 }
 
 type Resource struct {
-	Method             string  `json:"method"`
-	URL                string  `json:"url"`
-	StatusCode         *int    `json:"statusCode,omitempty"`
-	TTFBMs            int64   `json:"ttfbMs"`
-	Mbps              *float64 `json:"mbps,omitempty"`
-	ContentType        string  `json:"contentType,omitempty"`
-	ContentTypeMime    *string `json:"contentTypeMime,omitempty"`
-	ContentEncoding    *string `json:"contentEncoding,omitempty"`
-	ContentCharset     *string `json:"contentCharset,omitempty"`
-	ContentTypeCharset *string `json:"contentTypeCharset,omitempty"`
-	Minify             *bool   `json:"minify,omitempty"`
-	ErrorMessage       *string `json:"errorMessage,omitempty"`
+	Method             string            `json:"method"`
+	URL                string            `json:"url"`
+	StatusCode         *int              `json:"statusCode,omitempty"`
+	TTFBMS             int64             `json:"ttfbMs"`
+	Mbps               *float64          `json:"mbps,omitempty"`
+	ContentType        string            `json:"contentType,omitempty"`
+	ContentTypeMime    *string           `json:"contentTypeMime,omitempty"`
+	ContentEncoding    *string           `json:"contentEncoding,omitempty"`
+	ContentCharset     *string           `json:"contentCharset,omitempty"`
+	ContentTypeCharset *string           `json:"contentTypeCharset,omitempty"`
+	Minify             *bool             `json:"minify,omitempty"`
+	ErrorMessage       *string           `json:"errorMessage,omitempty"`
 	RawHeaders         map[string]string `json:"rawHeaders,omitempty"`
-	ContentFilePath    *string `json:"contentFilePath,omitempty"`
+	ContentFilePath    *string           `json:"contentFilePath,omitempty"`
 }
 
 type Domain struct {
@@ -78,7 +78,7 @@ func (pc *ProxyController) StartRecording(targetURL string) error {
 	if err := os.MkdirAll(pc.InventoryDir, 0755); err != nil {
 		return fmt.Errorf("failed to create inventory directory: %v", err)
 	}
-	
+
 	// contents ディレクトリも事前に作成
 	contentsDir := filepath.Join(pc.InventoryDir, "contents")
 	if err := os.MkdirAll(contentsDir, 0755); err != nil {
@@ -86,7 +86,7 @@ func (pc *ProxyController) StartRecording(targetURL string) error {
 	}
 
 	// プロキシを recording モードで起動
-	cmd := exec.Command(pc.ProxyPath, 
+	cmd := exec.Command(pc.ProxyPath,
 		"--port", fmt.Sprintf("%d", pc.Port),
 		"--inventory", pc.InventoryDir,
 		"recording", targetURL)
@@ -152,7 +152,7 @@ func (pc *ProxyController) Stop() error {
 	go func() {
 		done <- pc.Process.Wait()
 	}()
-	
+
 	select {
 	case <-done:
 		// プロセスが正常終了
@@ -161,7 +161,7 @@ func (pc *ProxyController) Stop() error {
 		pc.Process.Process.Kill()
 		<-done
 	}
-	
+
 	pc.Process = nil
 
 	return nil
@@ -174,12 +174,12 @@ func (pc *ProxyController) waitForProxy() error {
 		if pc.Process != nil && pc.Process.ProcessState != nil && pc.Process.ProcessState.Exited() {
 			return fmt.Errorf("proxy process exited unexpectedly")
 		}
-		
+
 		// ポートが開いているか直接確認
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", pc.Port), 500*time.Millisecond)
 		if err == nil {
 			conn.Close()
-			
+
 			// プロキシ経由でローカルテストサーバーに簡単なテスト
 			client := &http.Client{Timeout: 3 * time.Second}
 			proxyURL := &url.URL{
@@ -326,7 +326,7 @@ func (pc *ProxyController) LoadContent(method, urlStr string) ([]byte, error) {
 	// 今は簡易実装
 	filename := fmt.Sprintf("%s_%s.content", method, sanitizeURL(urlStr))
 	contentPath := filepath.Join(pc.InventoryDir, "contents", filename)
-	
+
 	return os.ReadFile(contentPath)
 }
 
@@ -349,16 +349,16 @@ func sanitizeURL(urlStr string) string {
 func GetAvailablePort() (int, error) {
 	// ランダムシードを初期化（一度だけ）
 	rand.Seed(time.Now().UnixNano())
-	
+
 	// ランダムな範囲から開始（10000-20000に拡張）
 	start := 10000 + rand.Intn(10000)
-	
+
 	for i := 0; i < 200; i++ { // 最大200個のポートを試行
 		port := start + i
 		if port > 65535 {
 			port = 10000 + (port - 65536)
 		}
-		
+
 		// ポートが利用可能かチェック
 		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 		if err == nil {
@@ -366,7 +366,7 @@ func GetAvailablePort() (int, error) {
 			return port, nil
 		}
 	}
-	
+
 	return 0, fmt.Errorf("no available port found")
 }
 
@@ -376,14 +376,14 @@ func CreateTempInventoryDir(testName string) (string, error) {
 	timestamp := time.Now().UnixNano()
 	safeName := sanitizeFileName(testName)
 	dirName := fmt.Sprintf("test_%s_%d", safeName, timestamp)
-	
+
 	tempDir := filepath.Join("..", "temp", "parallel_tests", dirName)
-	
+
 	// ディレクトリを作成
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %v", err)
 	}
-	
+
 	return tempDir, nil
 }
 
@@ -394,13 +394,13 @@ func NewParallelProxyController(proxyPath, testName string) (*ProxyController, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available port: %v", err)
 	}
-	
+
 	// 一時ディレクトリを作成
 	inventoryDir, err := CreateTempInventoryDir(testName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp directory: %v", err)
 	}
-	
+
 	return &ProxyController{
 		Port:         port,
 		ProxyPath:    proxyPath,
@@ -414,21 +414,21 @@ func copyInventoryDir(srcDir, dstDir string) error {
 	if _, err := os.Stat(srcDir); os.IsNotExist(err) {
 		return fmt.Errorf("source directory does not exist: %s", srcDir)
 	}
-	
+
 	// 再帰的にファイルをコピー
 	return filepath.Walk(srcDir, func(srcPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		// 相対パスを計算
 		relPath, err := filepath.Rel(srcDir, srcPath)
 		if err != nil {
 			return err
 		}
-		
+
 		dstPath := filepath.Join(dstDir, relPath)
-		
+
 		if info.IsDir() {
 			// ディレクトリを作成
 			return os.MkdirAll(dstPath, info.Mode())
@@ -447,19 +447,19 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	defer srcFile.Close()
-	
+
 	// 宛先ディレクトリを作成
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
 	}
-	
+
 	// 宛先ファイルを作成
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	defer dstFile.Close()
-	
+
 	// ファイル内容をコピー
 	_, err = io.Copy(dstFile, srcFile)
 	return err
@@ -473,7 +473,7 @@ func MakeProxyRequest(method, urlStr string, headers map[string]string, proxyPor
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse proxy URL: %v", err)
 	}
-	
+
 	// プロキシ設定付きのHTTPクライアントを作成
 	client := &http.Client{
 		Timeout: 30 * time.Second,
@@ -481,31 +481,31 @@ func MakeProxyRequest(method, urlStr string, headers map[string]string, proxyPor
 			Proxy: http.ProxyURL(proxy),
 		},
 	}
-	
+
 	// リクエストを作成
 	req, err := http.NewRequest(method, urlStr, nil)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// ヘッダーを設定
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	
+
 	// リクエストを送信
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	// レスポンスボディを読み取り
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// レスポンスヘッダーをマップに変換
 	headers_response := make(map[string]string)
 	for name, values := range resp.Header {
@@ -513,7 +513,7 @@ func MakeProxyRequest(method, urlStr string, headers map[string]string, proxyPor
 			headers_response[name] = values[0]
 		}
 	}
-	
+
 	return &HTTPResponse{
 		StatusCode:      resp.StatusCode,
 		Headers:         headers_response,
@@ -526,7 +526,7 @@ func MakeProxyRequest(method, urlStr string, headers map[string]string, proxyPor
 // LoadInventory インベントリファイルを読み込み
 func LoadInventory(inventoryDir string) (*Inventory, error) {
 	inventoryPath := filepath.Join(inventoryDir, "inventory.json")
-	
+
 	// ファイルの存在確認
 	if _, err := os.Stat(inventoryPath); os.IsNotExist(err) {
 		// デバッグ情報: ディレクトリの内容を確認
@@ -539,18 +539,18 @@ func LoadInventory(inventoryDir string) (*Inventory, error) {
 		}
 		return nil, fmt.Errorf("inventory file not found: %s (directory may not exist)", inventoryPath)
 	}
-	
+
 	// ファイルを読み込み
 	data, err := os.ReadFile(inventoryPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read inventory file: %v", err)
 	}
-	
+
 	// JSONを解析
 	var inventory Inventory
 	if err := json.Unmarshal(data, &inventory); err != nil {
 		return nil, fmt.Errorf("failed to parse inventory JSON: %v", err)
 	}
-	
+
 	return &inventory, nil
 }

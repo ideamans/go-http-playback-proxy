@@ -39,17 +39,30 @@ Go 言語製の MITM プロキシです。HTTP/HTTPS 通信の記録・再生機
   - `PlaybackTransaction`: 再生用トランザクション型（JSON 非対応）
   - `BodyChunk`: レスポンスボディのチャンク（JSON 非対応、TargetOffset 付き）
 
-#### 3. 圧縮システム (`coding.go`)
+#### 3. 圧縮システム (`encoding.go`)
 
-- 6 つの圧縮形式をサポート:
-  - **Gzip**: RFC 1952 準拠 (46.55%圧縮率)
-  - **Deflate**: RFC 1951 準拠 (40.00%圧縮率)
-  - **Brotli**: Google 開発 (35.27%圧縮率 - 最高効率)
-  - **Zstd**: Facebook 開発 (43.64%圧縮率)
-  - **Compress**: Unix LZW (68.00%圧縮率)
+- 4 つの圧縮形式をサポート:
+  - **Gzip**: RFC 1952 準拠
+  - **Deflate**: RFC 1951 準拠
+  - **Brotli**: Google 開発
+  - **Zstd**: Facebook 開発（klauspost/compress）
   - **Identity**: 無圧縮パススルー
 
-#### 4. リソースパス変換システム (`resource.go`)
+#### 4. 文字コード変換システム (`charset.go`)
+
+- HTML/CSS の文字コード自動検出・変換
+- Content-Type ヘッダーと<meta charset>の両方に対応
+- UTF-8 以外のコンテンツを UTF-8 で保存、再生時に復元
+- 対応文字コード: Shift_JIS, EUC-JP, ISO-8859-1 等
+- 変換失敗時の安全な処理（-failed サフィックス）
+
+#### 5. フォーマット判定システム (`formatting.go`)
+
+- コンテンツタイプの正確な判定
+- HTML, CSS, JavaScript の識別
+- 文字コード処理が必要なフォーマットの特定
+
+#### 6. リソースパス変換システム (`resource.go`)
 
 - HTTP メソッド・URL をファイルパスに変換
 - 逆変換でファイルパスから HTTP リクエストを復元
@@ -155,10 +168,12 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 ### 依存関係
 
 - `github.com/lqqyt2423/go-mitmproxy/proxy`: MITM プロキシ基盤
-- `github.com/andybalholm/brotli`: Brotli 圧縮
-- `github.com/klauspost/compress`: Zstd 圧縮
+- `golang.org/x/text`: 文字コード変換
+- 標準ライブラリのみで最小構成
 
 ### ファイル構成
+
+#### コア機能
 
 - `main.go`: プロキシモード分岐とメイン実装
 - `proxy.go`: 共通プロキシ機能と基本ログ処理
@@ -166,11 +181,20 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 - `playback.go`: 再生モード実装（PlaybackPlugin、上流プロキシ対応）
 - `inventory.go`: データ永続化システム（PersistenceManager、PlaybackManager）
 - `types.go`: TypeScript 互換型定義システム
-- `coding.go`: マルチフォーマット圧縮/展開システム
 - `resource.go`: URL-ファイルパス変換システム
-- `lighthouse.sh`: Lighthouse パフォーマンステスト自動化スクリプト
+
+#### 文字コード処理
+
+- `charset.go`: HTML/CSS の文字コード検出・変換
+- `encoding.go`: HTTP Content-Encoding 処理（gzip, deflate, brotli, zstd）
+- `formatting.go`: コンテンツフォーマット判定（HTML, CSS, JavaScript 等）
+
+#### テスト・自動化
+
 - `*_test.go`: 包括的テストスイート
+- `lighthouse.sh`: Lighthouse パフォーマンステスト自動化スクリプト
 - `Makefile`: ビルド自動化
+- `integration/`: 統合テストとテストデータ
 
 ### プロトコル対応
 
@@ -186,12 +210,23 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 - エンコーディング: UTF-8 percent encoding
 - 対応文字: 日本語、中国語、韓国語等のマルチバイト文字
 
-### テスト覆盖率
+### テスト覆盖
 
-- 33 個のテストケース
-- 圧縮システム: 6 つの形式 × 複数レベル
-- URL 変換システム: 基本・パラメータ・国際化・逆変換
-- 型システム: JSON シリアライゼーション
+#### 単体テスト
+
+- 圧縮/展開システム（encoding_test.go）
+- 文字コード変換（charset_test.go）
+- URL-ファイルパス変換（resource_test.go）
+- 型システム（types_test.go）
+- インベントリ管理（inventory_test.go）
+- 録画・再生機能（recording_test.go, playback_test.go）
+
+#### 統合テスト（integration/）
+
+- 実際の HTTP 通信の録画・再生
+- 文字コード変換の E2E テスト
+- パフォーマンステスト
+- 多言語コンテンツ処理
 
 ### 制限事項
 
@@ -233,7 +268,7 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 
 **時間制御システム**:
 
-- **TTFB**: 実際の記録時間を再現（TTFBMs フィールド）
+- **TTFB**: 実際の記録時間を再現（TTFBMS フィールド）
 - **チャンク送信**: `TargetOffset` による精密タイミング制御
 - **転送速度**: 記録時の Mbps で実際のネットワーク速度を再現
 
@@ -256,7 +291,7 @@ chunkProgress := float64(end) / float64(totalSize)
 chunkTime := time.Duration(float64(totalTransferTime) * chunkProgress)
 
 // TTFB + チャンク時間 = 絶対送信タイミング
-targetOffset := time.Duration(resource.TTFBMs)*time.Millisecond + chunkTime
+targetOffset := time.Duration(resource.TTFBMS)*time.Millisecond + chunkTime
 ```
 
 **再生時の待機制御** (`playback.go:156-189`):
@@ -277,41 +312,97 @@ if now.Before(targetSendTime) {
 
 この実装により、元の HTTP 通信のパフォーマンス特性を正確に再現できます。
 
-# 文字コード
+## 文字コード処理システム
 
-HTML と CSS には UTF-8 以外の文字コードが利用されていることがあり、その指定方法には HTTP ヘッダの Content-Type に明示する方法と、ソースコードに明示する方法がある。
+### 概要
 
-- HTML では `<meta charset="...">` タグを使用
-- CSS では `@charset "..."` ルールを使用
+HTML と CSS の文字コード処理を自動化。録画時は UTF-8 で保存し、再生時に元の文字コードを復元します。
 
-なお、JavaScript などにも UTF-8 以外の文字コードが用いられる可能性があるが、今回は HTML と CSS に限定する。
+### 実装詳細（`charset.go`）
 
-recording で記録したファイルは、編集容易であるように常に UTF-8 で保存するが、playback では元の文字コードを再現する必要がある。
+#### 文字コード検出
 
-そこで HTML と CSS については recording により inventory.resource とコンテンツファイルを保存するとき、Content-Encoding の圧縮を解いた次に以下の処理を行う。
+1. **HTTP ヘッダー**: `Content-Type: text/html; charset=shift_jis`
+2. **HTML メタタグ**: `<meta charset="shift_jis">`
+3. **CSS ルール**: `@charset "shift_jis";`
 
-1. Content-Type ヘッダの charset を取得
-2. コンテンツ内の文字コードを取得
-3. 上記の明示がない、または UTF-8 の場合はここで処理を終了
-4. 取得した文字コードが UTF-8 でない場合、コンテンツを UTF-8 に変換し、ファイルにコンテンツを UTF-8 で保存
-5. Resource の ContentCharset に文字コードを指定して保存
+#### 録画時処理
 
-UTF-8 への変換に失敗した場合(非対応の文字コードなど)の場合は、変換前のコンテンツをそのまま保存し、Resource の ContentCharset には'-failed'サフィックスを付加する。例: 'unknown-failed'
+```go
+// Content-Encoding 展開後
+charset := DetectCharset(contentType, body)
+if charset != "" && charset != "utf-8" {
+    utf8Body, err := ConvertToUTF8(body, charset)
+    if err != nil {
+        resource.ContentCharset = charset + "-failed"
+    } else {
+        body = utf8Body
+        resource.ContentCharset = charset
+    }
+}
+```
 
-一方、playback で PlaybackTransaction に変換する際は、Content-Encoding に基づく圧縮を行う前にこの逆の処理を行う。UTF-8 から元の文字コードへの復元だ。
+#### 再生時処理
 
-playback 時は、ContentCharset の値を ContentType ヘッダにも反映する。
+```go
+// Content-Encoding 圧縮前
+if resource.ContentCharset != "" && !strings.HasSuffix(resource.ContentCharset, "-failed") {
+    originalBody, err := ConvertFromUTF8(body, resource.ContentCharset)
+    if err == nil {
+        body = originalBody
+        // Content-Type ヘッダーも更新
+        updateContentTypeCharset(response, resource.ContentCharset)
+    }
+}
+```
 
-## Resource 上の文字コードの使い分け
+### Resource フィールド
 
-- ContentTypeCharset HTTP ヘッダ Content-Type に記載されていた文字コード
-- ContentCharset 最終的にコンテンツに使用されていた文字コード
+- **ContentTypeCharset**: HTTP ヘッダーの charset 値
+- **ContentCharset**: 実際に使用する charset（検出結果）
 
-playback で最終的に参考にするのは、`ContentCharset`とする。
+### 対応文字コード
 
-# TODO
+- **Shift_JIS**: 日本語（レガシー）
+- **EUC-JP**: 日本語（Unix 系）
+- **ISO-8859-1**: 西欧言語
+- **UTF-8**: デフォルト
 
-- [ ] optimize の recording と playback への組み込み
-- [ ] charset の自動制御
-- [ ] CI/CD
-- [ ] 結合テスト
+## Make タスク
+
+### 基本タスク
+
+```bash
+# ビルド（テストバイナリも生成）
+make build
+
+# 単体テスト実行
+make test
+
+# 統合テスト環境セットアップ
+make setup-integration
+
+# 統合テスト実行
+make test-integration
+
+# Lighthouse パフォーマンステスト
+make lighthouse
+```
+
+### 使用例
+
+```bash
+# 完全なテスト実行
+make build
+make setup-integration
+make test
+make test-integration
+make lighthouse
+```
+
+## TODO
+
+- [ ] CI/CD パイプライン構築
+- [ ] Docker コンテナ対応
+- [ ] WebSocket プロキシ対応
+- [ ] HTTP/2 サポート検討

@@ -13,7 +13,7 @@ func TestResourceJSON(t *testing.T) {
 	resource := Resource{
 		Method:          "GET",
 		URL:             "https://example.com/api",
-		TTFBMs:          150,
+		TTFBMS:          150,
 		StatusCode:      &statusCode,
 		MBPS:            &mbps,
 		ContentEncoding: &contentEncoding,
@@ -89,8 +89,8 @@ func TestInventoryJSON(t *testing.T) {
 			{Name: "cdn.example.com", IPAddress: "192.168.1.2"},
 		},
 		Resources: []Resource{
-			{Method: "GET", URL: "https://example.com/", TTFBMs: 100},
-			{Method: "GET", URL: "https://example.com/style.css", TTFBMs: 50},
+			{Method: "GET", URL: "https://example.com/", TTFBMS: 100},
+			{Method: "GET", URL: "https://example.com/style.css", TTFBMS: 50},
 		},
 	}
 

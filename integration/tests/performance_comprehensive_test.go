@@ -18,10 +18,10 @@ func TestPerformanceComprehensive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	
+
 	// testsディレクトリから見て ../temp/http-playback-proxy
 	proxyPath := filepath.Join(wd, "..", "temp", "http-playback-proxy")
-	
+
 	// 絶対パスに変換
 	if absPath, err := filepath.Abs(proxyPath); err == nil {
 		proxyPath = absPath
@@ -36,42 +36,42 @@ func TestPerformanceComprehensive(t *testing.T) {
 			Name:         "Small file - Instant TTFB - Unlimited speed",
 			URL:          TestServerURL + "/performance/small?ttfb=0&speed=0",
 			ExpectedSize: 1024, // 1KB
-			TTFBMs:       0,
+			TTFBMS:       0,
 			SpeedKbps:    0, // 無制限
 		},
 		{
 			Name:         "Small file - Fast TTFB - High speed",
 			URL:          TestServerURL + "/performance/small?ttfb=50&speed=10000",
 			ExpectedSize: 1024,
-			TTFBMs:       50,
+			TTFBMS:       50,
 			SpeedKbps:    10000, // 10Mbps
 		},
 		{
 			Name:         "Small file - Slow TTFB - Low speed",
 			URL:          TestServerURL + "/performance/small?ttfb=500&speed=100",
 			ExpectedSize: 1024,
-			TTFBMs:       500,
+			TTFBMS:       500,
 			SpeedKbps:    100, // 100Kbps
 		},
 		{
 			Name:         "Medium file - Medium TTFB - Medium speed",
 			URL:          TestServerURL + "/performance/medium?ttfb=200&speed=1000",
 			ExpectedSize: 100 * 1024, // 100KB
-			TTFBMs:       200,
+			TTFBMS:       200,
 			SpeedKbps:    1000, // 1Mbps
 		},
 		{
 			Name:         "Medium file - High TTFB - High speed",
 			URL:          TestServerURL + "/performance/medium?ttfb=1000&speed=5000",
 			ExpectedSize: 100 * 1024,
-			TTFBMs:       1000,
+			TTFBMS:       1000,
 			SpeedKbps:    5000, // 5Mbps
 		},
 		{
 			Name:         "Large file - Low TTFB - Medium speed",
 			URL:          TestServerURL + "/performance/large?ttfb=100&speed=2000",
 			ExpectedSize: 10 * 1024 * 1024, // 10MB
-			TTFBMs:       100,
+			TTFBMS:       100,
 			SpeedKbps:    2000, // 2Mbps
 		},
 	}
@@ -89,7 +89,7 @@ type PerformanceTestCase struct {
 	Name         string
 	URL          string
 	ExpectedSize int64
-	TTFBMs       int
+	TTFBMS       int
 	SpeedKbps    int
 }
 
@@ -177,9 +177,9 @@ type PerformanceMetrics struct {
 // 直接アクセスのパフォーマンス測定
 func measurePerformanceDirect(urlStr string) (*PerformanceMetrics, error) {
 	client := &http.Client{Timeout: 60 * time.Second}
-	
+
 	startTime := time.Now()
-	
+
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
 		return nil, err
@@ -193,12 +193,12 @@ func measurePerformanceDirect(urlStr string) (*PerformanceMetrics, error) {
 
 	// TTFB測定：最初のレスポンスが返ってきた時点
 	ttfb := time.Since(startTime)
-	
+
 	// チャンク単位で読み取り時間を測定
 	var totalBytes int64
 	var chunkCount int
 	buffer := make([]byte, 8192)
-	
+
 	bodyStartTime := time.Now()
 	for {
 		n, err := resp.Body.Read(buffer)
@@ -210,10 +210,10 @@ func measurePerformanceDirect(urlStr string) (*PerformanceMetrics, error) {
 			break
 		}
 	}
-	
+
 	bodyTime := time.Since(bodyStartTime)
 	totalTime := time.Since(startTime)
-	
+
 	// 転送速度計算（ボディ部分のみ）
 	var mbps float64
 	if bodyTime.Seconds() > 0 && totalBytes > 0 {
@@ -243,16 +243,16 @@ func measurePerformanceDirectWithProxy(urlStr string, proxyPort int) (*Performan
 		Scheme: "http",
 		Host:   fmt.Sprintf("localhost:%d", proxyPort),
 	}
-	
+
 	client := &http.Client{
 		Timeout: 60 * time.Second,
 		Transport: &http.Transport{
 			Proxy: http.ProxyURL(proxyURL),
 		},
 	}
-	
+
 	startTime := time.Now()
-	
+
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
 		return nil, err
@@ -266,12 +266,12 @@ func measurePerformanceDirectWithProxy(urlStr string, proxyPort int) (*Performan
 
 	// TTFB測定：最初のレスポンスが返ってきた時点
 	ttfb := time.Since(startTime)
-	
+
 	// チャンク単位で読み取り時間を測定
 	var totalBytes int64
 	var chunkCount int
 	buffer := make([]byte, 8192)
-	
+
 	bodyStartTime := time.Now()
 	for {
 		n, err := resp.Body.Read(buffer)
@@ -283,10 +283,10 @@ func measurePerformanceDirectWithProxy(urlStr string, proxyPort int) (*Performan
 			break
 		}
 	}
-	
+
 	bodyTime := time.Since(bodyStartTime)
 	totalTime := time.Since(startTime)
-	
+
 	// 転送速度計算（ボディ部分のみ）
 	var mbps float64
 	if bodyTime.Seconds() > 0 && totalBytes > 0 {
@@ -312,12 +312,12 @@ func validatePerformanceMetrics(t *testing.T, tc PerformanceTestCase, metrics *P
 	}
 
 	// TTFBの検証（±500msの誤差を許容）
-	if tc.TTFBMs > 0 {
-		expectedTTFB := time.Duration(tc.TTFBMs) * time.Millisecond
+	if tc.TTFBMS > 0 {
+		expectedTTFB := time.Duration(tc.TTFBMS) * time.Millisecond
 		tolerance := 500 * time.Millisecond // さらに余裕を持たせる
-		
+
 		if metrics.TTFB < expectedTTFB-tolerance || metrics.TTFB > expectedTTFB+tolerance {
-			t.Logf("[%s] TTFB out of range: expected ~%v, got %v (tolerance: %v)", 
+			t.Logf("[%s] TTFB out of range: expected ~%v, got %v (tolerance: %v)",
 				phase, expectedTTFB, metrics.TTFB, tolerance)
 			// エラーではなくログのみに変更
 		}
@@ -327,9 +327,9 @@ func validatePerformanceMetrics(t *testing.T, tc PerformanceTestCase, metrics *P
 	if tc.SpeedKbps > 0 {
 		expectedMbps := float64(tc.SpeedKbps) / 1024
 		tolerance := expectedMbps * 2.0 // 200%の誤差を許容（ネットワーク・OS変動考慮）
-		
+
 		if metrics.Mbps > expectedMbps+tolerance {
-			t.Logf("[%s] Transfer speed higher than expected: expected ~%.2f Mbps, got %.2f Mbps (tolerance: %.2f)", 
+			t.Logf("[%s] Transfer speed higher than expected: expected ~%.2f Mbps, got %.2f Mbps (tolerance: %.2f)",
 				phase, expectedMbps, metrics.Mbps, tolerance)
 			// エラーではなくログのみに変更
 		}
@@ -343,12 +343,12 @@ func validatePerformanceMetrics(t *testing.T, tc PerformanceTestCase, metrics *P
 func validateRecordingOverhead(t *testing.T, direct, recording *PerformanceMetrics) {
 	// Recording は 200% 以内のオーバーヘッドであることを期待（余裕を持たせる）
 	overheadRatio := float64(recording.TotalTime) / float64(direct.TotalTime)
-	
+
 	if overheadRatio > 3.0 { // 3倍以内なら許容
 		t.Logf("Recording overhead higher than expected: %.2fx slower than direct access", overheadRatio)
 	}
 
-	t.Logf("Recording overhead: %.2fx (Direct: %v, Recording: %v)", 
+	t.Logf("Recording overhead: %.2fx (Direct: %v, Recording: %v)",
 		overheadRatio, direct.TotalTime, recording.TotalTime)
 }
 
@@ -359,14 +359,14 @@ func validateInventoryPerformance(t *testing.T, tc PerformanceTestCase, inventor
 	}
 
 	resource := inventory.Resources[0]
-	
+
 	// Mbps が記録されているか
 	if resource.Mbps == nil || *resource.Mbps <= 0 {
 		t.Error("Invalid Mbps recorded in inventory")
 	}
 
 	// TTFB が記録されているか
-	if resource.TTFBMs < 0 {
+	if resource.TTFBMS < 0 {
 		t.Error("Invalid TTFB recorded in inventory")
 	}
 
@@ -374,7 +374,7 @@ func validateInventoryPerformance(t *testing.T, tc PerformanceTestCase, inventor
 	if resource.Mbps != nil {
 		mbpsValue = *resource.Mbps
 	}
-	t.Logf("Inventory performance: TTFB=%dms, Mbps=%.2f", resource.TTFBMs, mbpsValue)
+	t.Logf("Inventory performance: TTFB=%dms, Mbps=%.2f", resource.TTFBMS, mbpsValue)
 }
 
 // パフォーマンス指標の比較
@@ -382,9 +382,9 @@ func comparePerformanceMetrics(t *testing.T, tc PerformanceTestCase, direct, pla
 	// TTFB の再現精度（±200msの誤差を許容）
 	ttfbDiff := playback.TTFB - direct.TTFB
 	tolerance := 500 * time.Millisecond // 余裕を持たせる
-	
+
 	if ttfbDiff < -tolerance || ttfbDiff > tolerance {
-		t.Logf("TTFB reproduction inaccurate: direct=%v, playback=%v, diff=%v", 
+		t.Logf("TTFB reproduction inaccurate: direct=%v, playback=%v, diff=%v",
 			direct.TTFB, playback.TTFB, ttfbDiff)
 	}
 
@@ -392,19 +392,25 @@ func comparePerformanceMetrics(t *testing.T, tc PerformanceTestCase, direct, pla
 	if direct.Mbps > 0 {
 		speedRatio := playback.Mbps / direct.Mbps
 		if speedRatio < 0.5 || speedRatio > 2.0 { // 2倍の範囲内
-			t.Logf("Transfer speed reproduction inaccurate: direct=%.2f Mbps, playback=%.2f Mbps, ratio=%.2f", 
+			t.Logf("Transfer speed reproduction inaccurate: direct=%.2f Mbps, playback=%.2f Mbps, ratio=%.2f",
 				direct.Mbps, playback.Mbps, speedRatio)
 		}
 	}
 
 	// バイト数の完全一致
 	if direct.BytesReceived != playback.BytesReceived {
-		t.Errorf("Byte count mismatch: direct=%d, playback=%d", 
+		t.Errorf("Byte count mismatch: direct=%d, playback=%d",
 			direct.BytesReceived, playback.BytesReceived)
 	}
 
 	t.Logf("Performance comparison: TTFB diff=%v, Speed ratio=%.2f, Size match=%t",
-		ttfbDiff, 
-		func() float64 { if direct.Mbps > 0 { return playback.Mbps/direct.Mbps } else { return 1.0 } }(),
+		ttfbDiff,
+		func() float64 {
+			if direct.Mbps > 0 {
+				return playback.Mbps / direct.Mbps
+			} else {
+				return 1.0
+			}
+		}(),
 		direct.BytesReceived == playback.BytesReceived)
 }
