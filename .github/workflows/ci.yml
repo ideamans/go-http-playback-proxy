@@ -41,44 +41,6 @@ jobs:
     - name: Build binary
       run: go build -v ./...
     
-    - name: Install dependencies for integration tests (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y imagemagick curl
-    
-    - name: Install dependencies for integration tests (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install imagemagick
-        # curl is already available on macOS
-    
-    - name: Install dependencies for integration tests (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # Install ImageMagick via chocolatey
-        choco install imagemagick -y
-        # curl is already available on Windows
-        # Refresh environment to get ImageMagick in PATH
-        refreshenv
-        # Verify magick command is available
-        where magick
-      shell: pwsh
-    
-    - name: Run integration tests (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        cd integration
-        chmod +x setup-testdata.sh run-integration-tests.sh
-        ./setup-testdata.sh
-        ./run-integration-tests.sh --basic-only
-      shell: bash
-    
-    - name: Run integration tests (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        cd integration
-        # Use bash shell on Windows to run scripts
-        bash setup-testdata.sh
-        bash run-integration-tests.sh --basic-only
+    - name: Run integration tests
+      run: make test-integration-ci
       shell: bash

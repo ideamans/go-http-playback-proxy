@@ -65,6 +65,7 @@ RUN_CHARSET=true
 RUN_URL_PATTERNS=true
 RUN_BASIC=true
 VERBOSE=false
+SKIP_SETUP=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -86,6 +87,10 @@ while [[ $# -gt 0 ]]; do
             RUN_URL_PATTERNS=false
             shift
             ;;
+        --skip-setup)
+            SKIP_SETUP=true
+            shift
+            ;;
         --verbose|-v)
             VERBOSE=true
             shift
@@ -97,6 +102,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-charset       Skip charset/compression tests"
             echo "  --skip-url-patterns  Skip URL pattern tests"
             echo "  --basic-only         Run only basic functionality tests"
+            echo "  --skip-setup         Skip test data setup (for CI)"
             echo "  --verbose, -v        Verbose output"
             echo "  --help, -h           Show this help"
             exit 0
@@ -127,14 +133,18 @@ if [ ! -f "$PROJECT_ROOT/main.go" ]; then
 fi
 
 # テストデータ準備
-log_info "Setting up test data..."
-if [ ! -d "$SCRIPT_DIR/testdata" ]; then
-    log_info "Generating test data..."
-    cd "$SCRIPT_DIR"
-    ./setup-testdata.sh
-    cd - > /dev/null
+if [ "$SKIP_SETUP" = false ]; then
+    log_info "Setting up test data..."
+    if [ ! -d "$SCRIPT_DIR/testdata" ]; then
+        log_info "Generating test data..."
+        cd "$SCRIPT_DIR"
+        ./setup-testdata.sh
+        cd - > /dev/null
+    else
+        log_info "Test data already exists"
+    fi
 else
-    log_info "Test data already exists"
+    log_info "Skipping test data setup (--skip-setup)"
 fi
 
 # 一時ディレクトリ作成
