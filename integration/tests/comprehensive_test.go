@@ -17,10 +17,10 @@ func TestComprehensiveIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get working directory: %v", err)
 	}
-	
+
 	// testsディレクトリから見て ../temp/http-playback-proxy
 	proxyPath := filepath.Join(wd, "..", "temp", "http-playback-proxy")
-	
+
 	// 絶対パスに変換
 	if absPath, err := filepath.Abs(proxyPath); err == nil {
 		proxyPath = absPath
@@ -33,231 +33,231 @@ func TestComprehensiveIntegration(t *testing.T) {
 	testCases := []TestCase{
 		// 文字コードテスト
 		{
-			Name:        "UTF-8 HTML",
-			Method:      "GET",
-			URL:         TestServerURL + "/charset/utf8",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:            "UTF-8 HTML",
+			Method:          "GET",
+			URL:             TestServerURL + "/charset/utf8",
+			Headers:         map[string]string{},
+			ExpectedStatus:  200,
 			ExpectedCharset: "UTF-8",
-			Category:    "charset",
+			Category:        "charset",
 		},
 		{
-			Name:        "Shift_JIS HTML",
-			Method:      "GET", 
-			URL:         TestServerURL + "/charset/shift_jis",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:            "Shift_JIS HTML",
+			Method:          "GET",
+			URL:             TestServerURL + "/charset/shift_jis",
+			Headers:         map[string]string{},
+			ExpectedStatus:  200,
 			ExpectedCharset: "Shift_JIS",
-			Category:    "charset",
+			Category:        "charset",
 		},
 		{
-			Name:        "EUC-JP HTML",
-			Method:      "GET",
-			URL:         TestServerURL + "/charset/euc_jp", 
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:            "EUC-JP HTML",
+			Method:          "GET",
+			URL:             TestServerURL + "/charset/euc_jp",
+			Headers:         map[string]string{},
+			ExpectedStatus:  200,
 			ExpectedCharset: "EUC-JP",
-			Category:    "charset",
+			Category:        "charset",
 		},
 		{
-			Name:        "ISO-8859-1 HTML",
-			Method:      "GET",
-			URL:         TestServerURL + "/charset/iso8859",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:            "ISO-8859-1 HTML",
+			Method:          "GET",
+			URL:             TestServerURL + "/charset/iso8859",
+			Headers:         map[string]string{},
+			ExpectedStatus:  200,
 			ExpectedCharset: "ISO-8859-1",
-			Category:    "charset",
+			Category:        "charset",
 		},
 
 		// 圧縮テスト
 		{
-			Name:        "Gzip Compression",
-			Method:      "GET",
-			URL:         TestServerURL + "/api/users.json?compression=gzip",
-			Headers:     map[string]string{"Accept-Encoding": "gzip, deflate, br"},
-			ExpectedStatus: 200,
+			Name:             "Gzip Compression",
+			Method:           "GET",
+			URL:              TestServerURL + "/api/users.json?compression=gzip",
+			Headers:          map[string]string{"Accept-Encoding": "gzip, deflate, br"},
+			ExpectedStatus:   200,
 			ExpectedEncoding: "gzip",
-			Category:    "compression",
+			Category:         "compression",
 		},
 		{
-			Name:        "Brotli Compression",
-			Method:      "GET", 
-			URL:         TestServerURL + "/api/users.json?compression=br",
-			Headers:     map[string]string{"Accept-Encoding": "gzip, deflate, br"},
-			ExpectedStatus: 200,
+			Name:             "Brotli Compression",
+			Method:           "GET",
+			URL:              TestServerURL + "/api/users.json?compression=br",
+			Headers:          map[string]string{"Accept-Encoding": "gzip, deflate, br"},
+			ExpectedStatus:   200,
 			ExpectedEncoding: "br",
-			Category:    "compression",
+			Category:         "compression",
 		},
 		{
-			Name:        "No Compression",
-			Method:      "GET",
-			URL:         TestServerURL + "/api/users.json?compression=identity",
-			Headers:     map[string]string{"Accept-Encoding": "identity"},
-			ExpectedStatus: 200,
+			Name:             "No Compression",
+			Method:           "GET",
+			URL:              TestServerURL + "/api/users.json?compression=identity",
+			Headers:          map[string]string{"Accept-Encoding": "identity"},
+			ExpectedStatus:   200,
 			ExpectedEncoding: "",
-			Category:    "compression",
+			Category:         "compression",
 		},
 
 		// HTTPメソッドテスト
 		{
-			Name:        "POST Request",
-			Method:      "POST",
-			URL:         TestServerURL + "/api/test_post",
-			Headers:     map[string]string{"Content-Type": "application/json"},
+			Name:           "POST Request",
+			Method:         "POST",
+			URL:            TestServerURL + "/api/test_post",
+			Headers:        map[string]string{"Content-Type": "application/json"},
 			ExpectedStatus: 200,
-			Category:    "method",
+			Category:       "method",
 		},
 		{
-			Name:        "PUT Request", 
-			Method:      "PUT",
-			URL:         TestServerURL + "/api/test_put",
-			Headers:     map[string]string{"Content-Type": "application/json"},
+			Name:           "PUT Request",
+			Method:         "PUT",
+			URL:            TestServerURL + "/api/test_put",
+			Headers:        map[string]string{"Content-Type": "application/json"},
 			ExpectedStatus: 200,
-			Category:    "method",
+			Category:       "method",
 		},
 		{
-			Name:        "DELETE Request",
-			Method:      "DELETE",
-			URL:         TestServerURL + "/api/test_delete",
-			Headers:     map[string]string{},
+			Name:           "DELETE Request",
+			Method:         "DELETE",
+			URL:            TestServerURL + "/api/test_delete",
+			Headers:        map[string]string{},
 			ExpectedStatus: 200,
-			Category:    "method",
+			Category:       "method",
 		},
 
 		// ステータスコードテスト
 		{
-			Name:        "301 Redirect",
-			Method:      "GET",
-			URL:         TestServerURL + "/status/301",
-			Headers:     map[string]string{},
+			Name:           "301 Redirect",
+			Method:         "GET",
+			URL:            TestServerURL + "/status/301",
+			Headers:        map[string]string{},
 			ExpectedStatus: 301,
-			Category:    "status",
+			Category:       "status",
 		},
 		{
-			Name:        "404 Not Found",
-			Method:      "GET",
-			URL:         TestServerURL + "/status/404",
-			Headers:     map[string]string{},
+			Name:           "404 Not Found",
+			Method:         "GET",
+			URL:            TestServerURL + "/status/404",
+			Headers:        map[string]string{},
 			ExpectedStatus: 404,
-			Category:    "status",
+			Category:       "status",
 		},
 		{
-			Name:        "500 Server Error",
-			Method:      "GET",
-			URL:         TestServerURL + "/status/500",
-			Headers:     map[string]string{},
+			Name:           "500 Server Error",
+			Method:         "GET",
+			URL:            TestServerURL + "/status/500",
+			Headers:        map[string]string{},
 			ExpectedStatus: 500,
-			Category:    "status",
+			Category:       "status",
 		},
 
 		// URLパターンテスト
 		{
-			Name:        "Root Path",
-			Method:      "GET",
-			URL:         TestServerURL + "/",
-			Headers:     map[string]string{},
+			Name:           "Root Path",
+			Method:         "GET",
+			URL:            TestServerURL + "/",
+			Headers:        map[string]string{},
 			ExpectedStatus: 200,
-			Category:    "url_pattern",
+			Category:       "url_pattern",
 		},
 		{
-			Name:        "Query Parameters",
-			Method:      "GET",
-			URL:         TestServerURL + "/api/test_params?id=123&type=json",
-			Headers:     map[string]string{},
+			Name:           "Query Parameters",
+			Method:         "GET",
+			URL:            TestServerURL + "/api/test_params?id=123&type=json",
+			Headers:        map[string]string{},
 			ExpectedStatus: 200,
-			Category:    "url_pattern",
+			Category:       "url_pattern",
 		},
 		{
-			Name:        "Japanese Parameters",
-			Method:      "GET",
-			URL:         TestServerURL + "/api/test_japanese?q=東京駅&lang=ja",
-			Headers:     map[string]string{},
+			Name:           "Japanese Parameters",
+			Method:         "GET",
+			URL:            TestServerURL + "/api/test_japanese?q=東京駅&lang=ja",
+			Headers:        map[string]string{},
 			ExpectedStatus: 200,
-			Category:    "url_pattern",
+			Category:       "url_pattern",
 		},
 		{
-			Name:        "Long Parameters",
-			Method:      "GET",
-			URL:         TestServerURL + "/api/test_long_params?query=this_is_a_very_long_parameter_that_should_be_hashed_because_it_exceeds_32_characters&category=electronics&sort=price&order=desc&page=1",
-			Headers:     map[string]string{},
+			Name:           "Long Parameters",
+			Method:         "GET",
+			URL:            TestServerURL + "/api/test_long_params?query=this_is_a_very_long_parameter_that_should_be_hashed_because_it_exceeds_32_characters&category=electronics&sort=price&order=desc&page=1",
+			Headers:        map[string]string{},
 			ExpectedStatus: 200,
-			Category:    "url_pattern",
+			Category:       "url_pattern",
 		},
 
 		// ファイル形式テスト
 		{
-			Name:        "JPEG Image",
-			Method:      "GET",
-			URL:         TestServerURL + "/images/small.jpg",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "JPEG Image",
+			Method:              "GET",
+			URL:                 TestServerURL + "/images/small.jpg",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "image/jpeg",
-			Category:    "content_type",
+			Category:            "content_type",
 		},
 		{
-			Name:        "PNG Image",
-			Method:      "GET",
-			URL:         TestServerURL + "/images/small.png",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "PNG Image",
+			Method:              "GET",
+			URL:                 TestServerURL + "/images/small.png",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "image/png",
-			Category:    "content_type",
+			Category:            "content_type",
 		},
 		{
-			Name:        "SVG Image",
-			Method:      "GET",
-			URL:         TestServerURL + "/images/small.svg",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "SVG Image",
+			Method:              "GET",
+			URL:                 TestServerURL + "/images/small.svg",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "image/svg+xml",
-			Category:    "content_type",
+			Category:            "content_type",
 		},
 		{
-			Name:        "CSS File",
-			Method:      "GET",
-			URL:         TestServerURL + "/css/utf8.css",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "CSS File",
+			Method:              "GET",
+			URL:                 TestServerURL + "/css/utf8.css",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "text/css",
-			Category:    "content_type",
+			Category:            "content_type",
 		},
 		{
-			Name:        "JavaScript File",
-			Method:      "GET",
-			URL:         TestServerURL + "/js/utf8.js",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "JavaScript File",
+			Method:              "GET",
+			URL:                 TestServerURL + "/js/utf8.js",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "application/javascript",
-			Category:    "content_type",
+			Category:            "content_type",
 		},
 
 		// Optimize機能テスト（minified content が beautified される）
 		{
-			Name:        "Minified HTML Optimization",
-			Method:      "GET",
-			URL:         TestServerURL + "/minified/html",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "Minified HTML Optimization",
+			Method:              "GET",
+			URL:                 TestServerURL + "/minified/html",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "text/html",
-			Category:    "optimize",
+			Category:            "optimize",
 		},
 		{
-			Name:        "Minified CSS Optimization",
-			Method:      "GET",
-			URL:         TestServerURL + "/minified/css",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "Minified CSS Optimization",
+			Method:              "GET",
+			URL:                 TestServerURL + "/minified/css",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "text/css",
-			Category:    "optimize",
+			Category:            "optimize",
 		},
 		{
-			Name:        "Minified JS Optimization",
-			Method:      "GET",
-			URL:         TestServerURL + "/minified/js",
-			Headers:     map[string]string{},
-			ExpectedStatus: 200,
+			Name:                "Minified JS Optimization",
+			Method:              "GET",
+			URL:                 TestServerURL + "/minified/js",
+			Headers:             map[string]string{},
+			ExpectedStatus:      200,
 			ExpectedContentType: "text/javascript",
-			Category:    "optimize",
+			Category:            "optimize",
 		},
 	}
 
@@ -419,7 +419,7 @@ func validateInventory(t *testing.T, tc TestCase, inventory *Inventory, directRe
 	}
 
 	// パフォーマンス情報の検証
-	if resource.TTFBMs < 0 {
+	if resource.TTFBMS < 0 {
 		t.Error("Invalid TTFB recorded in inventory")
 	}
 
@@ -431,14 +431,14 @@ func validateInventory(t *testing.T, tc TestCase, inventory *Inventory, directRe
 	if resource.Mbps != nil {
 		mbpsValue = *resource.Mbps
 	}
-	t.Logf("✅ Inventory validation passed: TTFB=%dms, Mbps=%.2f", resource.TTFBMs, mbpsValue)
+	t.Logf("✅ Inventory validation passed: TTFB=%dms, Mbps=%.2f", resource.TTFBMS, mbpsValue)
 }
 
 // 3つのレスポンスの比較検証
 func compareResponses(t *testing.T, tc TestCase, direct, recording, playback *HTTPResponse) {
 	// ステータスコードの一致
 	if direct.StatusCode != recording.StatusCode || direct.StatusCode != playback.StatusCode {
-		t.Errorf("Status code mismatch: direct=%d, recording=%d, playback=%d", 
+		t.Errorf("Status code mismatch: direct=%d, recording=%d, playback=%d",
 			direct.StatusCode, recording.StatusCode, playback.StatusCode)
 	}
 
@@ -446,7 +446,7 @@ func compareResponses(t *testing.T, tc TestCase, direct, recording, playback *HT
 	directCT := strings.ReplaceAll(direct.ContentType, "; ", ";")
 	recordingCT := strings.ReplaceAll(recording.ContentType, "; ", ";")
 	playbackCT := strings.ReplaceAll(playback.ContentType, "; ", ";")
-	
+
 	if directCT != recordingCT {
 		t.Logf("Content-Type format difference: direct=%s, recording=%s", direct.ContentType, recording.ContentType)
 	}
@@ -511,9 +511,9 @@ func runThreePhaseTestParallel(t *testing.T, tc TestCase, proxyPath string) {
 		t.Fatalf("Failed to create parallel proxy controller: %v", err)
 	}
 	defer os.RemoveAll(proxy.InventoryDir) // クリーンアップ
-	
+
 	t.Logf("Using port %d and inventory dir %s", proxy.Port, proxy.InventoryDir)
-	
+
 	// Phase 1: 直接アクセス（基準値取得）
 	t.Logf("Phase 1: Direct access to %s", tc.URL)
 	directResponse, err := MakeDirectRequest(tc.Method, tc.URL, tc.Headers)
@@ -522,34 +522,34 @@ func runThreePhaseTestParallel(t *testing.T, tc TestCase, proxyPath string) {
 	}
 	// 基本検証
 	validateResponse(t, "Direct", tc, directResponse)
-	
+
 	// プロキシバイナリが存在しない場合はPhase 1のみで成功とする
 	if _, err := os.Stat(proxyPath); err != nil {
 		t.Logf("⚠️  Proxy binary not found at %s, skipping Phase 2&3", proxyPath)
 		t.Logf("✅ Phase 1 test completed successfully for %s", tc.Name)
 		return
 	}
-	
+
 	// Phase 2: Recording（プロキシ経由で記録）
 	t.Logf("Phase 2: Recording via proxy (port %d)", proxy.Port)
 	if err := proxy.StartRecording(TestServerURL); err != nil {
 		t.Fatalf("Failed to start recording proxy: %v", err)
 	}
 	defer proxy.Stop()
-	
+
 	// プロキシ経由でリクエスト
 	recordedResponse, err := MakeProxyRequest(tc.Method, tc.URL, tc.Headers, proxy.Port)
 	if err != nil {
 		t.Fatalf("Proxy request failed: %v", err)
 	}
-	
+
 	// プロキシ停止とインベントリ保存待ち
 	proxy.Stop()
 	time.Sleep(2 * time.Second) // プロセス終了とファイル書き込み待ち
-	
+
 	// レスポンス検証
 	validateResponse(t, "Recording", tc, recordedResponse)
-	
+
 	// インベントリファイル検証（リトライ機能付き）
 	var inventory *Inventory
 	var loadErr error
@@ -567,50 +567,50 @@ func runThreePhaseTestParallel(t *testing.T, tc TestCase, proxyPath string) {
 		t.Fatalf("Failed to load inventory after 5 attempts: %v", loadErr)
 	}
 	validateInventory(t, tc, inventory, directResponse)
-	
+
 	// Phase 3: Playback（記録からの再生）
 	t.Logf("Phase 3: Playback from inventory")
-	
+
 	// 新しいポートでplaybackプロキシを起動
 	playbackProxy, err := NewParallelProxyController(proxyPath, tc.Name+"_playback")
 	if err != nil {
 		t.Fatalf("Failed to create playback proxy controller: %v", err)
 	}
 	defer os.RemoveAll(playbackProxy.InventoryDir)
-	
+
 	t.Logf("Phase 3: Using playback port %d", playbackProxy.Port)
-	
+
 	// インベントリをコピー
 	if err := copyInventoryDir(proxy.InventoryDir, playbackProxy.InventoryDir); err != nil {
 		t.Fatalf("Failed to copy inventory: %v", err)
 	}
-	
+
 	if err := playbackProxy.StartPlayback(); err != nil {
 		t.Fatalf("Failed to start playback proxy: %v", err)
 	}
 	defer playbackProxy.Stop()
-	
+
 	// プレイバック経由でリクエスト
 	playbackResponse, err := MakeProxyRequest(tc.Method, tc.URL, tc.Headers, playbackProxy.Port)
 	if err != nil {
 		t.Fatalf("Playback request failed: %v", err)
 	}
-	
+
 	// プレイバックレスポンス検証
 	validateResponse(t, "Playback", tc, playbackResponse)
-	
+
 	// プレイバックヘッダー確認
 	if playbackResponse.Headers["x-playback-proxy"] != "1" {
 		// ワーニングとして出力（エラーにはしない）
 		t.Logf("⚠️  Expected x-playback-proxy header not found (headers: %v)", playbackResponse.Headers)
 	}
-	
+
 	t.Logf("✅ All phases completed successfully for %s", tc.Name)
 }
 
 // Optimize機能の検証
 func validateOptimization(t *testing.T, tc TestCase, resource *Resource, directResponse *HTTPResponse) {
-	// ContentFilePathが存在することを確認  
+	// ContentFilePathが存在することを確認
 	if resource.ContentFilePath == nil {
 		t.Error("ContentFilePath not found in optimized resource")
 		return
@@ -619,17 +619,17 @@ func validateOptimization(t *testing.T, tc TestCase, resource *Resource, directR
 	// 保存されたコンテンツファイルを読み込み（並行実行用の一時ディレクトリから）
 	// 並行実行用のProxyControllerは ../temp/parallel_tests/ 以下にディレクトリを作成する
 	inventoryDir := filepath.Join("..", "temp", "parallel_tests", "test_"+sanitizeFileName(tc.Name)+"_*")
-	
+
 	// glob パターンでディレクトリを検索
 	matches, err := filepath.Glob(inventoryDir)
 	if err != nil || len(matches) == 0 {
 		t.Logf("Warning: Could not find inventory directory matching %s", inventoryDir)
 		return
 	}
-	
+
 	// 最初にマッチしたディレクトリを使用
 	contentPath := filepath.Join(matches[0], "contents", *resource.ContentFilePath)
-	
+
 	savedContent, err := os.ReadFile(contentPath)
 	if err != nil {
 		t.Logf("Warning: Could not read saved content file (%s): %v", contentPath, err)
@@ -638,15 +638,15 @@ func validateOptimization(t *testing.T, tc TestCase, resource *Resource, directR
 	}
 
 	originalContent := directResponse.Body
-	
+
 	// Minified content がbeautified されていることを確認
 	// 1. サイズが増加している（beautification により改行・インデントが追加される）
 	if len(savedContent) <= len(originalContent) {
-		t.Logf("Warning: Saved content should be larger than original minified content. Original: %d, Saved: %d", 
+		t.Logf("Warning: Saved content should be larger than original minified content. Original: %d, Saved: %d",
 			len(originalContent), len(savedContent))
 	} else {
 		increasePercentage := float64(len(savedContent)-len(originalContent)) / float64(len(originalContent)) * 100
-		t.Logf("✅ Content successfully beautified: %d → %d bytes (%.1f%% increase)", 
+		t.Logf("✅ Content successfully beautified: %d → %d bytes (%.1f%% increase)",
 			len(originalContent), len(savedContent), increasePercentage)
 	}
 

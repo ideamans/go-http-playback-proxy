@@ -48,7 +48,7 @@ func (pm *PersistenceManager) SaveRecordedTransactions(
 			if err != nil {
 				return fmt.Errorf("failed to save decoded body: %w", err)
 			}
-			
+
 			// Update resource with charset information
 			if httpCharset != "" {
 				resource.ContentTypeCharset = &httpCharset
@@ -83,17 +83,17 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 	transaction *RecordingTransaction,
 ) (*Resource, error) {
 	// Calculate TTFB (Time To First Byte)
-	var ttfbMs int64
+	var ttfbMS int64
 	if !transaction.ResponseStarted.IsZero() && !transaction.RequestStarted.IsZero() {
-		ttfbMs = transaction.ResponseStarted.Sub(transaction.RequestStarted).Milliseconds()
+		ttfbMS = transaction.ResponseStarted.Sub(transaction.RequestStarted).Milliseconds()
 		// Sanity check: TTFB should be positive and reasonable (< 1 hour)
-		if ttfbMs < 0 || ttfbMs > 3600000 {
-			log.Printf("[INVENTORY] Warning: Invalid TTFB %d ms, setting to 0", ttfbMs)
-			ttfbMs = 0
+		if ttfbMS < 0 || ttfbMS > 3600000 {
+			log.Printf("[INVENTORY] Warning: Invalid TTFB %d ms, setting to 0", ttfbMS)
+			ttfbMS = 0
 		}
 	} else {
 		log.Printf("[INVENTORY] Warning: Invalid timestamps, setting TTFB to 0")
-		ttfbMs = 0
+		ttfbMS = 0
 	}
 
 	// Get file path using resource.go functions
@@ -134,7 +134,7 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 			// Sanity check: Mbps should be reasonable (< 10 Gbps)
 			if mbpsValue > 0 && mbpsValue < 10000 {
 				mbps = &mbpsValue
-				log.Printf("[INVENTORY] Mbps calculation: %d bytes, %.3fs, %.2f Mbps", 
+				log.Printf("[INVENTORY] Mbps calculation: %d bytes, %.3fs, %.2f Mbps",
 					len(transaction.Body), transferSeconds, mbpsValue)
 			} else {
 				log.Printf("[INVENTORY] Warning: Invalid Mbps %.2f, using default", mbpsValue)
@@ -147,7 +147,7 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 			mbps = &defaultMbps
 		}
 	} else {
-		log.Printf("[INVENTORY] Mbps calculation skipped: ResponseFinished.IsZero=%v, ResponseStarted.IsZero=%v, Body.len=%d", 
+		log.Printf("[INVENTORY] Mbps calculation skipped: ResponseFinished.IsZero=%v, ResponseStarted.IsZero=%v, Body.len=%d",
 			transaction.ResponseFinished.IsZero(), transaction.ResponseStarted.IsZero(), len(transaction.Body))
 		// For failed requests, use a default speed to avoid nil Mbps
 		if len(transaction.Body) == 0 {
@@ -159,7 +159,7 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 	resource := &Resource{
 		Method:             transaction.Method,
 		URL:                transaction.URL,
-		TTFBMs:             ttfbMs,
+		TTFBMS:             ttfbMS,
 		MBPS:               mbps,
 		StatusCode:         transaction.StatusCode,
 		ErrorMessage:       transaction.ErrorMessage,
@@ -439,7 +439,7 @@ func (pm *PlaybackManager) convertResourceToTransaction(resource *Resource) (*Pl
 	if len(compressedBody) > 0 {
 		rawHeaders["Content-Length"] = strconv.Itoa(len(compressedBody))
 	}
-	
+
 	// Update Content-Type header with charset if restored
 	if resource.ContentCharset != nil && *resource.ContentCharset != "" && !strings.HasSuffix(*resource.ContentCharset, "-failed") {
 		if contentType, exists := rawHeaders["Content-Type"]; exists {
@@ -454,7 +454,7 @@ func (pm *PlaybackManager) convertResourceToTransaction(resource *Resource) (*Pl
 				}
 				contentType = strings.TrimSpace(before) + after
 			}
-			
+
 			// Add charset
 			if !strings.HasSuffix(contentType, ";") && contentType != "" {
 				contentType += "; "
@@ -467,7 +467,7 @@ func (pm *PlaybackManager) convertResourceToTransaction(resource *Resource) (*Pl
 	transaction := &PlaybackTransaction{
 		Method:       resource.Method,
 		URL:          resource.URL,
-		TTFB:         time.Duration(resource.TTFBMs) * time.Millisecond,
+		TTFB:         time.Duration(resource.TTFBMS) * time.Millisecond,
 		StatusCode:   resource.StatusCode,
 		ErrorMessage: resource.ErrorMessage,
 		RawHeaders:   rawHeaders,
@@ -485,7 +485,7 @@ func (pm *PlaybackManager) loadAndCompressContent(resource *Resource) ([]byte, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to read content file %s: %w", contentPath, err)
 	}
-	
+
 	// Apply minify optimization if ResourceMinify is true and supported content type
 	if resource.Minify != nil && *resource.Minify && resource.ContentTypeMime != nil {
 		optimizer := NewContentOptimizer()
@@ -498,7 +498,7 @@ func (pm *PlaybackManager) loadAndCompressContent(resource *Resource) ([]byte, e
 			}
 		}
 	}
-	
+
 	// Process charset restoration if needed
 	if resource.ContentCharset != nil && *resource.ContentCharset != "" {
 		// Create a temporary http.Header for charset processing
@@ -510,7 +510,7 @@ func (pm *PlaybackManager) loadAndCompressContent(resource *Resource) ([]byte, e
 			}
 			headers.Set("Content-Type", contentType)
 		}
-		
+
 		restoredBody, err := processCharsetForPlayback(decodedBody, *resource.ContentCharset, headers)
 		if err != nil {
 			fmt.Printf("Warning: failed to restore charset for %s: %v\n", resource.URL, err)
@@ -570,7 +570,7 @@ func (pm *PlaybackManager) createBodyChunks(body []byte, resource *Resource) []B
 		chunkTime := time.Duration(float64(totalTransferTime) * chunkProgress)
 
 		// Target offset is TTFB + chunk time from request start
-		targetOffset := time.Duration(resource.TTFBMs)*time.Millisecond + chunkTime
+		targetOffset := time.Duration(resource.TTFBMS)*time.Millisecond + chunkTime
 
 		// For backward compatibility, also set TargetTime (will be recalculated during playback)
 		targetTime := time.Now().Add(targetOffset)

@@ -91,7 +91,7 @@ func (ts *TestServer) getTTFB(r *http.Request) time.Duration {
 func (ts *TestServer) getSpeed(r *http.Request) int {
 	speedStr := r.URL.Query().Get("speed")
 	log.Printf("[SPEED] Query parameter 'speed' = '%s' from URL: %s", speedStr, r.URL.String())
-	
+
 	if speedStr != "" {
 		if speed, err := strconv.Atoi(speedStr); err == nil {
 			log.Printf("[SPEED] Parsed speed: %d Kbps", speed)
@@ -167,7 +167,7 @@ func (ts *TestServer) serveIndex(w http.ResponseWriter, r *http.Request) {
     </ul>
 </body>
 </html>`
-	
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write([]byte(html))
 }
@@ -175,14 +175,14 @@ func (ts *TestServer) serveIndex(w http.ResponseWriter, r *http.Request) {
 func (ts *TestServer) serveAPI(w http.ResponseWriter, r *http.Request, compression string, speed int) {
 	filename := strings.TrimPrefix(r.URL.Path, "/api/")
 	filePath := filepath.Join(ts.testDataDir, "api", filename)
-	
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		// ファイルが存在しない場合は汎用APIレスポンスにフォールバック
 		ts.serveGenericAPI(w, r, compression, speed)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
@@ -190,13 +190,13 @@ func (ts *TestServer) serveAPI(w http.ResponseWriter, r *http.Request, compressi
 func (ts *TestServer) serveImages(w http.ResponseWriter, r *http.Request, compression string, speed int) {
 	filename := strings.TrimPrefix(r.URL.Path, "/images/")
 	filePath := filepath.Join(ts.testDataDir, "images", filename)
-	
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// Content-Typeを拡張子から判定
 	ext := filepath.Ext(filename)
 	var contentType string
@@ -212,7 +212,7 @@ func (ts *TestServer) serveImages(w http.ResponseWriter, r *http.Request, compre
 	default:
 		contentType = "application/octet-stream"
 	}
-	
+
 	w.Header().Set("Content-Type", contentType)
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
@@ -220,13 +220,13 @@ func (ts *TestServer) serveImages(w http.ResponseWriter, r *http.Request, compre
 func (ts *TestServer) serveHTML(w http.ResponseWriter, r *http.Request, compression string, speed int) {
 	filename := strings.TrimPrefix(r.URL.Path, "/html/")
 	filePath := filepath.Join(ts.testDataDir, "html", filename)
-	
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// 文字コードを設定
 	var charset string
 	switch filename {
@@ -239,7 +239,7 @@ func (ts *TestServer) serveHTML(w http.ResponseWriter, r *http.Request, compress
 	default:
 		charset = "UTF-8"
 	}
-	
+
 	w.Header().Set("Content-Type", fmt.Sprintf("text/html; charset=%s", charset))
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
@@ -247,13 +247,13 @@ func (ts *TestServer) serveHTML(w http.ResponseWriter, r *http.Request, compress
 func (ts *TestServer) serveCSS(w http.ResponseWriter, r *http.Request, compression string, speed int) {
 	filename := strings.TrimPrefix(r.URL.Path, "/css/")
 	filePath := filepath.Join(ts.testDataDir, "css", filename)
-	
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// 文字コードを設定
 	var charset string
 	switch filename {
@@ -262,7 +262,7 @@ func (ts *TestServer) serveCSS(w http.ResponseWriter, r *http.Request, compressi
 	default:
 		charset = "UTF-8"
 	}
-	
+
 	w.Header().Set("Content-Type", fmt.Sprintf("text/css; charset=%s", charset))
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
@@ -270,13 +270,13 @@ func (ts *TestServer) serveCSS(w http.ResponseWriter, r *http.Request, compressi
 func (ts *TestServer) serveJS(w http.ResponseWriter, r *http.Request, compression string, speed int) {
 	filename := strings.TrimPrefix(r.URL.Path, "/js/")
 	filePath := filepath.Join(ts.testDataDir, "js", filename)
-	
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// 文字コードを設定
 	var charset string
 	switch filename {
@@ -285,14 +285,14 @@ func (ts *TestServer) serveJS(w http.ResponseWriter, r *http.Request, compressio
 	default:
 		charset = "UTF-8"
 	}
-	
+
 	w.Header().Set("Content-Type", fmt.Sprintf("application/javascript; charset=%s", charset))
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
 
 func (ts *TestServer) servePerformanceTest(w http.ResponseWriter, r *http.Request, compression string, speed int) {
 	size := strings.TrimPrefix(r.URL.Path, "/performance/")
-	
+
 	var data []byte
 	switch size {
 	case "small":
@@ -314,7 +314,7 @@ func (ts *TestServer) servePerformanceTest(w http.ResponseWriter, r *http.Reques
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/octet-stream")
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
@@ -326,15 +326,15 @@ func (ts *TestServer) serveStatusTest(w http.ResponseWriter, r *http.Request, co
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	w.WriteHeader(status)
-	
+
 	response := map[string]interface{}{
-		"status": status,
-		"message": http.StatusText(status),
+		"status":    status,
+		"message":   http.StatusText(status),
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
-	
+
 	data, _ := json.Marshal(response)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
@@ -342,7 +342,7 @@ func (ts *TestServer) serveStatusTest(w http.ResponseWriter, r *http.Request, co
 
 func (ts *TestServer) serveCharsetTest(w http.ResponseWriter, r *http.Request, compression string, speed int) {
 	charset := strings.TrimPrefix(r.URL.Path, "/charset/")
-	
+
 	var filename string
 	switch charset {
 	case "utf8":
@@ -357,14 +357,14 @@ func (ts *TestServer) serveCharsetTest(w http.ResponseWriter, r *http.Request, c
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	filePath := filepath.Join(ts.testDataDir, "html", filename)
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// Content-Typeを正しく設定
 	var contentType string
 	switch charset {
@@ -377,7 +377,7 @@ func (ts *TestServer) serveCharsetTest(w http.ResponseWriter, r *http.Request, c
 	default:
 		contentType = "text/html; charset=UTF-8"
 	}
-	
+
 	w.Header().Set("Content-Type", contentType)
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
 }
@@ -388,10 +388,10 @@ func (ts *TestServer) writeWithCompressionAndSpeed(w http.ResponseWriter, data [
 	if compression != "identity" {
 		w.Header().Set("Content-Encoding", compression)
 	}
-	
+
 	// Content-Lengthを設定
 	w.Header().Set("Content-Length", strconv.Itoa(len(compressedData)))
-	
+
 	// 速度制御
 	if speed > 0 {
 		ts.writeWithSpeedLimit(w, compressedData, speed)
@@ -427,7 +427,7 @@ func (ts *TestServer) compressData(data []byte, compression string) []byte {
 
 func (ts *TestServer) writeWithSpeedLimit(w http.ResponseWriter, data []byte, speedKbps int) {
 	log.Printf("[SPEED] writeWithSpeedLimit called: %d bytes, %d Kbps", len(data), speedKbps)
-	
+
 	if speedKbps <= 0 {
 		// 速度制限なしの場合はそのまま送信
 		log.Printf("[SPEED] No speed limit, sending %d bytes immediately", len(data))
@@ -438,19 +438,19 @@ func (ts *TestServer) writeWithSpeedLimit(w http.ResponseWriter, data []byte, sp
 	// 1秒あたりのバイト数を計算
 	bytesPerSecond := speedKbps * 1024 / 8
 	log.Printf("[SPEED] Speed limit: %d Kbps = %d bytes/sec", speedKbps, bytesPerSecond)
-	
+
 	// データサイズに応じた適応的速度制御
-	var intervalMs int
+	var intervalMS int
 	var chunkSize int
-	
+
 	if len(data) < 10*1024 { // 10KB未満の小さなファイル
 		// 小さなファイルでは細かいチャンクで時間をかける
-		intervalMs = 100 // 100ms間隔
-		expectedTransferTimeMs := (len(data) * 8 * 1000) / (speedKbps * 1024) // 期待転送時間（ミリ秒）
-		if expectedTransferTimeMs < 100 {
-			expectedTransferTimeMs = 100 // 最低100ms
+		intervalMS = 100                                                      // 100ms間隔
+		expectedTransferTimeMS := (len(data) * 8 * 1000) / (speedKbps * 1024) // 期待転送時間（ミリ秒）
+		if expectedTransferTimeMS < 100 {
+			expectedTransferTimeMS = 100 // 最低100ms
 		}
-		chunkSize = len(data) / (expectedTransferTimeMs / intervalMs) // チャンク数から逆算
+		chunkSize = len(data) / (expectedTransferTimeMS / intervalMS) // チャンク数から逆算
 		if chunkSize < 1 {
 			chunkSize = 1
 		}
@@ -462,13 +462,13 @@ func (ts *TestServer) writeWithSpeedLimit(w http.ResponseWriter, data []byte, sp
 		}
 	} else { // 大きなファイル
 		// 従来の50ms間隔制御
-		intervalMs = 50
-		chunkSize = bytesPerSecond * intervalMs / 1000 // 50msあたりのバイト数
+		intervalMS = 50
+		chunkSize = bytesPerSecond * intervalMS / 1000 // 50msあたりのバイト数
 		if chunkSize < 1 {
 			chunkSize = 1
 		}
 		// 最小1KB、最大10KBのチャンクサイズ
-		minChunkSize := 1024    // 1KB
+		minChunkSize := 1024      // 1KB
 		maxChunkSize := 10 * 1024 // 10KB
 		if chunkSize < minChunkSize {
 			chunkSize = minChunkSize
@@ -477,26 +477,26 @@ func (ts *TestServer) writeWithSpeedLimit(w http.ResponseWriter, data []byte, sp
 			chunkSize = maxChunkSize
 		}
 	}
-	
+
 	expectedChunks := (len(data) + chunkSize - 1) / chunkSize
-	expectedDurationMs := expectedChunks * intervalMs
-	log.Printf("[SPEED] Adaptive control: %d bytes file, chunk=%d, interval=%dms, chunks=%d, duration=%dms", 
-		len(data), chunkSize, intervalMs, expectedChunks, expectedDurationMs)
-	
+	expectedDurationMS := expectedChunks * intervalMS
+	log.Printf("[SPEED] Adaptive control: %d bytes file, chunk=%d, interval=%dms, chunks=%d, duration=%dms",
+		len(data), chunkSize, intervalMS, expectedChunks, expectedDurationMS)
+
 	for i := 0; i < len(data); i += chunkSize {
 		end := i + chunkSize
 		if end > len(data) {
 			end = len(data)
 		}
-		
+
 		w.Write(data[i:end])
 		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
 		}
-		
+
 		// 次のチャンクまで待機（50ms）
 		if end < len(data) {
-			time.Sleep(time.Duration(intervalMs) * time.Millisecond)
+			time.Sleep(time.Duration(intervalMS) * time.Millisecond)
 		}
 	}
 }
@@ -513,7 +513,7 @@ func (ts *TestServer) serveMinifiedContent(w http.ResponseWriter, r *http.Reques
 	contentType := pathParts[0]
 	var fileName string
 	var mimeType string
-	
+
 	switch contentType {
 	case "html":
 		fileName = "minified.html"
@@ -560,9 +560,9 @@ func (ts *TestServer) serveGenericAPI(w http.ResponseWriter, r *http.Request, co
 			return headers
 		}(),
 		"timestamp": time.Now().Format(time.RFC3339),
-		"message": "Generic API response for testing",
+		"message":   "Generic API response for testing",
 	}
-	
+
 	data, _ := json.Marshal(response)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	ts.writeWithCompressionAndSpeed(w, data, compression, speed)
@@ -575,13 +575,13 @@ func main() {
 			port = p
 		}
 	}
-	
+
 	server := NewTestServer()
 	addr := fmt.Sprintf(":%d", port)
-	
+
 	log.Printf("Starting test server on %s", addr)
 	log.Printf("Test data directory: %s", TestDataDir)
-	
+
 	if err := http.ListenAndServe(addr, server); err != nil {
 		log.Fatal(err)
 	}

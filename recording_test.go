@@ -214,10 +214,10 @@ func TestRecordingPlugin_MultipleRequestResponse(t *testing.T) {
 
 	// Test multiple request/response cycles
 	testCases := []struct {
-		url        string
-		statusCode int
+		url         string
+		statusCode  int
 		contentType string
-		body       string
+		body        string
 	}{
 		{"https://example.com/", 200, "text/html", "<html>home page</html>"},
 		{"https://example.com/style.css", 200, "text/css", "body { margin: 0; }"},
@@ -375,7 +375,7 @@ func TestRecordingPlugin_EmptyResponse(t *testing.T) {
 // Helper function to parse URL for testing
 func parseURL(t *testing.T, urlStr string) *url.URL {
 	t.Helper()
-	
+
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
 		t.Fatalf("Failed to parse URL %s: %v", urlStr, err)
@@ -434,9 +434,9 @@ func TestRecordingPlugin_Integration(t *testing.T) {
 	flow.Response = &proxy.Response{
 		StatusCode: 200,
 		Header: http.Header{
-			"Content-Type":     []string{"application/json"},
-			"Content-Length":   []string{string(rune(len(responseBody)))},
-			"Server":           []string{"nginx/1.10.0"},
+			"Content-Type":                []string{"application/json"},
+			"Content-Length":              []string{string(rune(len(responseBody)))},
+			"Server":                      []string{"nginx/1.10.0"},
 			"Access-Control-Allow-Origin": []string{"*"},
 		},
 		Body: []byte(responseBody),
@@ -482,8 +482,8 @@ func TestRecordingPlugin_Integration(t *testing.T) {
 	}
 
 	// Verify TTFB was calculated
-	if resource.TTFBMs <= 0 {
-		t.Errorf("Expected positive TTFB, got %d", resource.TTFBMs)
+	if resource.TTFBMS <= 0 {
+		t.Errorf("Expected positive TTFB, got %d", resource.TTFBMS)
 	}
 
 	// Verify domain was recorded
