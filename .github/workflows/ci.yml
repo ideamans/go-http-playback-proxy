@@ -41,7 +41,6 @@ jobs:
     - name: Build binary
       run: go build -v ./...
     
-    # Skip integration tests for now - require test server setup
-    # - name: Run integration tests
-    #   run: make test-integration
-    #   shell: bash
+    - name: Run integration tests
+      run: make test-integration
+      shell: bash
