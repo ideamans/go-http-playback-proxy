@@ -35,8 +35,6 @@ go-http-playback-proxy
 # Integration test files
 /integration/temp/
 /integration/testserver/testserver
-/integration/testserver/go.sum
-/integration/tests/go.sum
 *.disabled
 
 /node_modules
