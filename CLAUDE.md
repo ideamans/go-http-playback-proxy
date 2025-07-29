@@ -400,6 +400,21 @@ make test-integration
 make lighthouse
 ```
 
+## CI/CD パイプライン
+
+GitHub Actions で次のパイプラインを実装する。
+
+### develop と main への push
+
+- Go 1.24 \* (windows, linux, macos)のマトリクス
+- 単体テスト
+- 結合テスト
+
+### v\*タグの push
+
+- goreleaser によるリリース
+- linux, macos(arm64, amd64), windows(amd64), FreeBSD(13, amd64)のバイナリをクロスコンパイルで生成
+
 ## TODO
 
 - [ ] CI/CD パイプライン構築

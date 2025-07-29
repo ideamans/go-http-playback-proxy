@@ -10,15 +10,17 @@ import (
 var (
 	port = flag.Int("port", 8080, "プロキシサーバーのポート番号")
 	inventoryDir = flag.String("inventory", "./inventory", "inventoryディレクトリのパス")
+	noBeautify = flag.Bool("no-beautify", false, "HTML・CSS・JavaScriptのBeautifyを無効化")
 )
 
 
 func printUsage() {
 	fmt.Fprintf(os.Stderr, "使用方法:\n")
-	fmt.Fprintf(os.Stderr, "  %s recording <URL> [--port <port>] [--inventory <dir>]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s recording <URL> [--port <port>] [--inventory <dir>] [--no-beautify]\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s playback [--port <port>] [--inventory <dir>]\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "\n例:\n")
 	fmt.Fprintf(os.Stderr, "  %s recording https://www.ideamans.com/ --port 8080 --inventory ./test_inventory\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s recording https://www.ideamans.com/ --port 8080 --inventory ./test_inventory --no-beautify\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s playback --port 8080 --inventory ./test_inventory\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "\nオプション:\n")
 	flag.PrintDefaults()
@@ -53,7 +55,7 @@ func main() {
 		log.Printf("モード: recording, 対象URL: %s, ポート: %d, inventory: %s", targetURL, *port, *inventoryDir)
 		
 		// Start recording mode
-		if err := StartRecording(targetURL, *port, *inventoryDir); err != nil {
+		if err := StartRecording(targetURL, *port, *inventoryDir, *noBeautify); err != nil {
 			log.Fatalf("Recording mode failed: %v", err)
 		}
 		

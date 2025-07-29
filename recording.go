@@ -21,16 +21,17 @@ type RecordingPlugin struct {
 	transactions []RecordingTransaction
 	mutex        sync.RWMutex
 	inventoryDir string
+	noBeautify   bool
 }
 
 // RecordingTransaction represents a transaction being recorded
 // NewRecordingPlugin creates a new recording plugin
 func NewRecordingPlugin(targetURL string) (*RecordingPlugin, error) {
-	return NewRecordingPluginWithInventoryDir(targetURL, "./inventory")
+	return NewRecordingPluginWithInventoryDir(targetURL, "./inventory", false)
 }
 
 // NewRecordingPluginWithInventoryDir creates a new recording plugin with custom inventory directory
-func NewRecordingPluginWithInventoryDir(targetURL string, inventoryDir string) (*RecordingPlugin, error) {
+func NewRecordingPluginWithInventoryDir(targetURL string, inventoryDir string, noBeautify bool) (*RecordingPlugin, error) {
 	parsedURL, err := url.Parse(targetURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse target URL: %w", err)
@@ -41,6 +42,7 @@ func NewRecordingPluginWithInventoryDir(targetURL string, inventoryDir string) (
 		targetDomain: parsedURL.Host,
 		transactions: make([]RecordingTransaction, 0),
 		inventoryDir: inventoryDir,
+		noBeautify:   noBeautify,
 	}
 
 	// Create inventory directory if it doesn't exist
@@ -133,7 +135,7 @@ func (p *RecordingPlugin) SaveInventory() error {
 	// Use PersistenceManager to save transactions
 	persistenceManager := NewPersistenceManager(p.inventoryDir)
 	
-	err := persistenceManager.SaveRecordedTransactions(p.transactions, p.targetURL)
+	err := persistenceManager.SaveRecordedTransactionsWithOptions(p.transactions, p.targetURL, p.noBeautify)
 	if err != nil {
 		return fmt.Errorf("failed to save recorded transactions: %w", err)
 	}
@@ -145,9 +147,9 @@ func (p *RecordingPlugin) SaveInventory() error {
 }
 
 // StartRecording starts the recording mode proxy
-func StartRecording(targetURL string, port int, inventoryDir string) error {
+func StartRecording(targetURL string, port int, inventoryDir string, noBeautify bool) error {
 	// Create recording plugin
-	recordingPlugin, err := NewRecordingPluginWithInventoryDir(targetURL, inventoryDir)
+	recordingPlugin, err := NewRecordingPluginWithInventoryDir(targetURL, inventoryDir, noBeautify)
 	if err != nil {
 		return fmt.Errorf("failed to create recording plugin: %w", err)
 	}

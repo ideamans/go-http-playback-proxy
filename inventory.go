@@ -31,6 +31,15 @@ func (pm *PersistenceManager) SaveRecordedTransactions(
 	transactions []RecordingTransaction,
 	entryURL string,
 ) error {
+	return pm.SaveRecordedTransactionsWithOptions(transactions, entryURL, false)
+}
+
+// SaveRecordedTransactionsWithOptions saves RecordingTransaction to the specified directory with options
+func (pm *PersistenceManager) SaveRecordedTransactionsWithOptions(
+	transactions []RecordingTransaction,
+	entryURL string,
+	noBeautify bool,
+) error {
 	var resources []Resource
 
 	// Convert each RecordingTransaction to Resource
@@ -43,7 +52,7 @@ func (pm *PersistenceManager) SaveRecordedTransactions(
 		// Save decoded body to contents file and get charset information
 		if resource.ContentFilePath != nil {
 			contentsFilePath := filepath.Join(pm.BaseDir, "contents", *resource.ContentFilePath)
-			httpCharset, contentCharset, err := pm.saveDecodedBody(contentsFilePath, &transaction)
+			httpCharset, contentCharset, err := pm.saveDecodedBodyWithOptions(contentsFilePath, &transaction, noBeautify)
 			if err != nil {
 				return fmt.Errorf("failed to save decoded body: %w", err)
 			}
@@ -173,6 +182,11 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 
 // saveDecodedBody saves the decoded body content to the specified path and returns charset information
 func (pm *PersistenceManager) saveDecodedBody(filePath string, transaction *RecordingTransaction) (httpCharset, contentCharset string, err error) {
+	return pm.saveDecodedBodyWithOptions(filePath, transaction, false)
+}
+
+// saveDecodedBodyWithOptions saves the decoded body content to the specified path with options and returns charset information
+func (pm *PersistenceManager) saveDecodedBodyWithOptions(filePath string, transaction *RecordingTransaction, noBeautify bool) (httpCharset, contentCharset string, err error) {
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(filePath)
 	err = os.MkdirAll(dir, 0755)
@@ -205,14 +219,16 @@ func (pm *PersistenceManager) saveDecodedBody(filePath string, transaction *Reco
 		processedBody = bodyData
 	}
 
-	// Apply beautify optimization if supported content type
-	optimizer := NewContentOptimizer()
-	if optimizer.Accept(contentType) {
-		beautified, beautifyErr := optimizer.Beautify(contentType, string(processedBody))
-		if beautifyErr != nil {
-			fmt.Printf("Warning: beautify processing failed, saving original data: %v\n", beautifyErr)
-		} else {
-			processedBody = []byte(beautified)
+	// Apply beautify optimization if supported content type and not disabled
+	if !noBeautify {
+		optimizer := NewContentOptimizer()
+		if optimizer.Accept(contentType) {
+			beautified, beautifyErr := optimizer.Beautify(contentType, string(processedBody))
+			if beautifyErr != nil {
+				fmt.Printf("Warning: beautify processing failed, saving original data: %v\n", beautifyErr)
+			} else {
+				processedBody = []byte(beautified)
+			}
 		}
 	}
 
