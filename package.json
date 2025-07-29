@@ -1,0 +1,11 @@
+{
+  "name": "go-http-playback-proxy",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/ideamans/go-http-playback-proxy.git",
+  "author": "Kunihiko Miyanaga <miyanaga@ideamans.com>",
+  "license": "MIT",
+  "dependencies": {
+    "lighthouse": "^12.8.0"
+  }
+}

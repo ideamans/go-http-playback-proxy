@@ -12,13 +12,14 @@ setup() {
     mkdir -p $LIGHTHOUSE
     make clean && make build
     rm -rf $INVENTORY
+    yarn
     echo "Setup completed."
 }
 
 # Baseline test function
 baseline() {
     echo "Running baseline Lighthouse test..."
-    lighthouse $URL \
+    yarn lighthouse $URL \
       --only-categories=performance \
       --output=html \
       --output-path=$LIGHTHOUSE/lighthouse-baseline.html \
@@ -36,7 +37,7 @@ recording() {
     sleep 2
     
     # Run Lighthouse through proxy
-    lighthouse $URL \
+    yarn lighthouse $URL \
       --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
       --only-categories=performance \
       --output=html \
@@ -74,7 +75,7 @@ playback() {
     sleep 2
     
     # Run Lighthouse through proxy
-    lighthouse $URL \
+    yarn lighthouse $URL \
       --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
       --only-categories=performance \
       --output=html \

@@ -29,6 +29,7 @@ go.work.sum
 
 /inventory/
 http-playback-proxy
+go-http-playback-proxy
 /lighthouse/
 
 # Integration test files
@@ -37,3 +38,5 @@ http-playback-proxy
 /integration/testserver/go.sum
 /integration/tests/go.sum
 *.disabled
+
+/node_modules
