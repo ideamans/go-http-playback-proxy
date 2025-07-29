@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 )
 
 var (
@@ -44,6 +45,39 @@ func main() {
 	mode := args[0]
 	var targetURL string
 	
+	// 手動で --no-beautify フラグを検出
+	for i, arg := range args {
+		if arg == "--no-beautify" {
+			*noBeautify = true
+			// フラグを引数リストから削除
+			args = append(args[:i], args[i+1:]...)
+			break
+		}
+	}
+	
+	// 手動で --inventory フラグを検出
+	for i := 0; i < len(args)-1; i++ {
+		if args[i] == "--inventory" {
+			*inventoryDir = args[i+1]
+			// フラグと値を引数リストから削除
+			args = append(args[:i], args[i+2:]...)
+			break
+		}
+	}
+	
+	// 手動で --port フラグを検出
+	for i := 0; i < len(args)-1; i++ {
+		if args[i] == "--port" {
+			if portVal, err := strconv.Atoi(args[i+1]); err == nil {
+				*port = portVal
+			}
+			// フラグと値を引数リストから削除
+			args = append(args[:i], args[i+2:]...)
+			break
+		}
+	}
+	
+	
 	switch mode {
 	case "recording":
 		if len(args) < 2 {
@@ -52,7 +86,7 @@ func main() {
 			os.Exit(1)
 		}
 		targetURL = args[1]
-		log.Printf("モード: recording, 対象URL: %s, ポート: %d, inventory: %s", targetURL, *port, *inventoryDir)
+		log.Printf("モード: recording, 対象URL: %s, ポート: %d, inventory: %s, no-beautify: %t", targetURL, *port, *inventoryDir, *noBeautify)
 		
 		// Start recording mode
 		if err := StartRecording(targetURL, *port, *inventoryDir, *noBeautify); err != nil {
