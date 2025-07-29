@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.24.x']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Get dependencies
+      run: go mod download
+    
+    - name: Run unit tests
+      run: go test -v ./...
+    
+    - name: Build binary
+      run: go build -v ./...
+    
+    - name: Run integration tests (Linux/macOS only)
+      if: runner.os != 'Windows'
+      run: |
+        cd integration
+        chmod +x setup-testdata.sh run-integration-tests.sh
+        ./setup-testdata.sh
+        ./run-integration-tests.sh
