@@ -5,9 +5,45 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/url"
-	"path/filepath"
 	"strings"
 )
+
+// pathJoin joins path elements with forward slashes, regardless of platform
+func pathJoin(elements ...string) string {
+	if len(elements) == 0 {
+		return ""
+	}
+	
+	var parts []string
+	for _, element := range elements {
+		if element != "" {
+			// Convert any backslashes to forward slashes and trim slashes
+			element = strings.ReplaceAll(element, "\\", "/")
+			element = strings.Trim(element, "/")
+			if element != "" {
+				parts = append(parts, element)
+			}
+		}
+	}
+	
+	return strings.Join(parts, "/")
+}
+
+// getFileExt gets file extension using forward slashes, regardless of platform
+func getFileExt(path string) string {
+	// Convert to forward slashes first
+	path = strings.ReplaceAll(path, "\\", "/")
+	
+	// Find last dot after last slash
+	lastSlash := strings.LastIndex(path, "/")
+	lastDot := strings.LastIndex(path, ".")
+	
+	if lastDot <= lastSlash {
+		return ""
+	}
+	
+	return path[lastDot:]
+}
 
 // ResourcePathOptions contains options for resource path conversion
 type ResourcePathOptions struct {
@@ -66,7 +102,7 @@ func MethodURLToFilePathWithOptions(method, rawURL string, options ResourcePathO
 	}
 
 	// Combine all parts
-	filePath := filepath.Join(methodLower, protocol, hostname, strings.TrimPrefix(path, "/"))
+	filePath := pathJoin(methodLower, protocol, hostname, strings.TrimPrefix(path, "/"))
 
 	return filePath, nil
 }
@@ -79,7 +115,7 @@ func normalizeResourcePath(path string) string {
 	}
 
 	// Check if path has an extension
-	if filepath.Ext(path) == "" {
+	if getFileExt(path) == "" {
 		// No extension, assume it's a directory and add index.html
 		return path + "/index.html"
 	}
@@ -191,7 +227,7 @@ func handleURLParameters(path, rawQuery string, options ResourcePathOptions) str
 	}
 
 	// Get the file extension from the original path
-	ext := filepath.Ext(path)
+	ext := getFileExt(path)
 	basePath := strings.TrimSuffix(path, ext)
 
 	// Insert parameters before the extension
@@ -201,7 +237,7 @@ func handleURLParameters(path, rawQuery string, options ResourcePathOptions) str
 // FilePathToMethodURL converts a file path back to method and URL (reverse operation)
 func FilePathToMethodURL(filePath string) (method, urlString string, err error) {
 	// Split the path components
-	parts := strings.Split(filepath.ToSlash(filePath), "/")
+	parts := strings.Split(filePath, "/")
 	if len(parts) < 3 {
 		return "", "", fmt.Errorf("invalid file path format: %s", filePath)
 	}
@@ -230,7 +266,7 @@ func FilePathToMethodURL(filePath string) (method, urlString string, err error) 
 		// Find the last occurrence of ~ to handle cases where ~ might be in the path
 		lastTilde := strings.LastIndex(path, "~")
 		if lastTilde != -1 {
-			ext := filepath.Ext(path)
+			ext := getFileExt(path)
 			if ext != "" {
 				// Extract query from between ~ and file extension
 				queryWithExt := path[lastTilde+1:]
@@ -285,7 +321,7 @@ func SanitizeFilePath(path string) string {
 	
 	parts := strings.Split(result, "/")
 	for i, part := range parts {
-		nameWithoutExt := strings.TrimSuffix(part, filepath.Ext(part))
+		nameWithoutExt := strings.TrimSuffix(part, getFileExt(part))
 		for _, reserved := range windowsReserved {
 			if strings.EqualFold(nameWithoutExt, reserved) {
 				parts[i] = "_" + part
