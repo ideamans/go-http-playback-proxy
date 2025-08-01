@@ -175,10 +175,15 @@ func TestRecordingPlugin_MultipleTransactions(t *testing.T) {
 		t.Fatalf("Expected %d resources, got %d", len(urls), len(inventory.Resources))
 	}
 
-	// Verify each resource
-	for i, resource := range inventory.Resources {
-		if resource.URL != urls[i] {
-			t.Errorf("Resource %d: expected URL %s, got %s", i, urls[i], resource.URL)
+	// Verify each resource exists (order may vary due to map iteration)
+	urlMap := make(map[string]bool)
+	for _, resource := range inventory.Resources {
+		urlMap[resource.URL] = true
+	}
+	
+	for _, expectedURL := range urls {
+		if !urlMap[expectedURL] {
+			t.Errorf("Expected URL %s not found in inventory", expectedURL)
 		}
 	}
 }
