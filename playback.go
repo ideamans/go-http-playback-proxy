@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -55,7 +55,7 @@ func (p *PlaybackPlugin) loadInventory() error {
 	
 	// Check if inventory exists
 	if _, err := os.Stat(inventoryPath); os.IsNotExist(err) {
-		log.Printf("[PLAYBACK] No inventory found at %s, will proxy all requests upstream", inventoryPath)
+		slog.Warn("No inventory found, will proxy all requests upstream", "path", inventoryPath)
 		return nil
 	}
 
@@ -65,7 +65,7 @@ func (p *PlaybackPlugin) loadInventory() error {
 		return fmt.Errorf("failed to load playback transactions: %w", err)
 	}
 
-	log.Printf("[PLAYBACK] PlaybackManager loaded %d transactions", len(transactions))
+	slog.Debug("PlaybackManager loaded transactions", "transactions", len(transactions))
 
 	// Convert transactions to map for fast lookup
 	for _, transaction := range transactions {
@@ -73,7 +73,7 @@ func (p *PlaybackPlugin) loadInventory() error {
 		
 		// Check for duplicate keys
 		if _, exists := p.transactionMap[key]; exists {
-			log.Printf("[PLAYBACK] WARNING: Duplicate key detected: %s", key)
+			slog.Warn("Duplicate key detected", "key", key)
 		}
 		
 		// Create a copy to store in the map
@@ -84,12 +84,12 @@ func (p *PlaybackPlugin) loadInventory() error {
 	// Check for specific URL
 	gtmKey := "GET:https://www.googletagmanager.com/gtag/js?id=G-VDRYPM3MEG"
 	if transaction, exists := p.transactionMap[gtmKey]; exists {
-		log.Printf("[PLAYBACK] ✓ Google Tag Manager found: %d chunks", len(transaction.Chunks))
+		slog.Debug("Google Tag Manager found", "chunks", len(transaction.Chunks))
 	} else {
-		log.Printf("[PLAYBACK] ✗ Google Tag Manager NOT found in transaction map")
+		slog.Debug("Google Tag Manager NOT found in transaction map")
 	}
 
-	log.Printf("[PLAYBACK] Loaded %d transactions from inventory", len(p.transactionMap))
+	slog.Debug("Loaded transactions from inventory", "transactions", len(p.transactionMap))
 	return nil
 }
 
@@ -108,17 +108,17 @@ func (p *PlaybackPlugin) Request(f *proxy.Flow) {
 	p.mutex.RUnlock()
 
 	if exists {
-		log.Printf("[PLAYBACK] Found matching transaction for: %s", key)
+		slog.Debug("Found matching transaction", "key", key)
 		// Playback from recorded transaction
 		p.playbackTransaction(f, transaction)
 	} else {
-		log.Printf("[PLAYBACK] No matching transaction for: %s, proxying upstream", key)
+		slog.Debug("No matching transaction, proxying upstream", "key", key)
 		// Also log some available keys for debugging
 		p.mutex.RLock()
 		count := 0
 		for availableKey := range p.transactionMap {
 			if count < 3 { // Show first 3 keys for debugging
-				log.Printf("[PLAYBACK] Available key: %s", availableKey)
+				slog.Debug("Available key", "key", availableKey)
 				count++
 			}
 		}
@@ -132,8 +132,10 @@ func (p *PlaybackPlugin) Request(f *proxy.Flow) {
 func (p *PlaybackPlugin) playbackTransaction(f *proxy.Flow, transaction *PlaybackTransaction) {
 	startTime := time.Now()
 	
-	log.Printf("[PLAYBACK] Replaying: %s %s (TTFB: %v)", 
-		transaction.Method, transaction.URL, transaction.TTFB)
+	slog.Debug("Replaying",
+		"method", transaction.Method,
+		"url", transaction.URL,
+		"ttfb", transaction.TTFB)
 
 	// Create response
 	response := &proxy.Response{
@@ -180,12 +182,18 @@ func (p *PlaybackPlugin) playbackTransaction(f *proxy.Flow, transaction *Playbac
 			now := time.Now()
 			if now.Before(targetSendTime) {
 				waitTime := targetSendTime.Sub(now)
-				log.Printf("[PLAYBACK] Waiting %v for chunk %d/%d of %s (offset: %v)", 
-					waitTime, i+1, len(transaction.Chunks), transaction.URL, chunk.TargetOffset)
+				slog.Debug("Waiting for chunk",
+					"wait_time", waitTime,
+					"chunk", fmt.Sprintf("%d/%d", i+1, len(transaction.Chunks)),
+					"url", transaction.URL,
+					"offset", chunk.TargetOffset)
 				time.Sleep(waitTime)
 			} else {
-				log.Printf("[PLAYBACK] Target time already passed for chunk %d/%d of %s (behind by %v, offset: %v)", 
-					i+1, len(transaction.Chunks), transaction.URL, now.Sub(targetSendTime), chunk.TargetOffset)
+				slog.Debug("Target time already passed",
+					"chunk", fmt.Sprintf("%d/%d", i+1, len(transaction.Chunks)),
+					"url", transaction.URL,
+					"behind_by", now.Sub(targetSendTime),
+					"offset", chunk.TargetOffset)
 			}
 			
 			// Add chunk to body buffer
@@ -193,8 +201,10 @@ func (p *PlaybackPlugin) playbackTransaction(f *proxy.Flow, transaction *Playbac
 		}
 
 		response.Body = bodyBuffer.Bytes()
-		log.Printf("[PLAYBACK] Combined %d chunks into %d bytes for %s", 
-			len(transaction.Chunks), bodyBuffer.Len(), transaction.URL)
+		slog.Debug("Combined chunks",
+			"chunks", len(transaction.Chunks),
+			"bytes", bodyBuffer.Len(),
+			"url", transaction.URL)
 	} else {
 		response.Body = []byte{}
 	}
@@ -203,13 +213,15 @@ func (p *PlaybackPlugin) playbackTransaction(f *proxy.Flow, transaction *Playbac
 	f.Response = response
 
 	elapsed := time.Since(startTime)
-	log.Printf("[PLAYBACK] Completed replay: %s %s (took %v)", 
-		transaction.Method, transaction.URL, elapsed)
+	slog.Debug("Completed replay",
+		"method", transaction.Method,
+		"url", transaction.URL,
+		"duration", elapsed)
 }
 
 // proxyUpstream forwards the request to the upstream server
 func (p *PlaybackPlugin) proxyUpstream(f *proxy.Flow) {
-	log.Printf("[PLAYBACK] Proxying upstream: %s %s", f.Request.Method, f.Request.URL.String())
+	slog.Debug("Proxying upstream", "method", f.Request.Method, "url", f.Request.URL.String())
 
 	// Create HTTP client with our transport
 	client := &http.Client{
@@ -262,8 +274,10 @@ func (p *PlaybackPlugin) proxyUpstream(f *proxy.Flow) {
 	// Set response
 	f.Response = response
 	
-	log.Printf("[PLAYBACK] Upstream response: %s %s %d", 
-		f.Request.Method, f.Request.URL.String(), resp.StatusCode)
+	slog.Debug("Upstream response",
+		"method", f.Request.Method,
+		"url", f.Request.URL.String(),
+		"status", resp.StatusCode)
 }
 
 // createErrorResponse creates an error response
@@ -277,7 +291,7 @@ func (p *PlaybackPlugin) createErrorResponse(f *proxy.Flow, statusCode int, mess
 	response.Header.Set("Content-Type", "text/plain")
 	f.Response = response
 
-	log.Printf("[PLAYBACK] Error response: %d %s", statusCode, message)
+	slog.Error("Error response", "status", statusCode, "message", message)
 }
 
 // StartPlayback starts the playback mode proxy

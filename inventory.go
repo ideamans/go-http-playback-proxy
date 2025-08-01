@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"mime"
 	"net/http"
 	"os"
@@ -95,11 +95,11 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 		ttfbMS = transaction.ResponseStarted.Sub(transaction.RequestStarted).Milliseconds()
 		// Sanity check: TTFB should be positive and reasonable (< 1 hour)
 		if ttfbMS < 0 || ttfbMS > 3600000 {
-			log.Printf("[INVENTORY] Warning: Invalid TTFB %d ms, setting to 0", ttfbMS)
+			slog.Warn("Invalid TTFB, setting to 0", "ttfb_ms", ttfbMS)
 			ttfbMS = 0
 		}
 	} else {
-		log.Printf("[INVENTORY] Warning: Invalid timestamps, setting TTFB to 0")
+		slog.Warn("Invalid timestamps, setting TTFB to 0")
 		ttfbMS = 0
 	}
 
@@ -141,21 +141,25 @@ func (pm *PersistenceManager) convertRecordingTransactionToResource(
 			// Sanity check: Mbps should be reasonable (< 10 Gbps)
 			if mbpsValue > 0 && mbpsValue < 10000 {
 				mbps = &mbpsValue
-				log.Printf("[INVENTORY] Mbps calculation: %d bytes, %.3fs, %.2f Mbps",
-					len(transaction.Body), transferSeconds, mbpsValue)
+				slog.Debug("Mbps calculation",
+					"bytes", len(transaction.Body),
+					"seconds", transferSeconds,
+					"mbps", mbpsValue)
 			} else {
-				log.Printf("[INVENTORY] Warning: Invalid Mbps %.2f, using default", mbpsValue)
+				slog.Warn("Invalid Mbps, using default", "mbps", mbpsValue)
 				defaultMbps := 1.0 // Default to 1 Mbps for failed calculations
 				mbps = &defaultMbps
 			}
 		} else {
-			log.Printf("[INVENTORY] Transfer duration is zero or negative: %v", transferDuration)
+			slog.Warn("Transfer duration is zero or negative", "duration", transferDuration)
 			defaultMbps := 1.0 // Default to 1 Mbps for invalid duration
 			mbps = &defaultMbps
 		}
 	} else {
-		log.Printf("[INVENTORY] Mbps calculation skipped: ResponseFinished.IsZero=%v, ResponseStarted.IsZero=%v, Body.len=%d",
-			transaction.ResponseFinished.IsZero(), transaction.ResponseStarted.IsZero(), len(transaction.Body))
+		slog.Debug("Mbps calculation skipped",
+			"response_finished_zero", transaction.ResponseFinished.IsZero(),
+			"response_started_zero", transaction.ResponseStarted.IsZero(),
+			"body_len", len(transaction.Body))
 		// For failed requests, use a default speed to avoid nil Mbps
 		if len(transaction.Body) == 0 {
 			defaultMbps := 0.1 // Default to 0.1 Mbps for empty responses

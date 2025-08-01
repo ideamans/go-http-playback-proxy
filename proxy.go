@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,8 +25,8 @@ func createProxy(port int) (*proxy.Proxy, error) {
 
 // startProxyWithShutdown starts the proxy server with graceful shutdown handling
 func startProxyWithShutdown(p *proxy.Proxy, port int) {
-	log.Printf("MITM プロキシサーバーを開始します（ポート: %d）", port)
-	log.Printf("プロキシ設定: http://localhost:%d", port)
+	slog.Info("Starting MITM proxy server", "port", port)
+	slog.Info("Proxy settings", "url", fmt.Sprintf("http://localhost:%d", port))
 
 	// シグナルハンドリング
 	c := make(chan os.Signal, 1)
@@ -34,11 +34,14 @@ func startProxyWithShutdown(p *proxy.Proxy, port int) {
 
 	go func() {
 		<-c
-		log.Println("シャットダウン中...")
+		slog.Info("Shutting down...")
 		os.Exit(0)
 	}()
 
-	log.Fatal(p.Start())
+	if err := p.Start(); err != nil {
+		slog.Error("Proxy start failed", "error", err)
+		os.Exit(1)
+	}
 }
 
 // BaseLogPlugin provides basic logging functionality
@@ -47,37 +50,40 @@ type BaseLogPlugin struct {
 }
 
 func (p *BaseLogPlugin) ServerConnected(connCtx *proxy.ConnContext) {
-	log.Printf("[DNS] Connected to server")
+	slog.Debug("Connected to server", "type", "DNS")
 }
 
 func (p *BaseLogPlugin) ClientConnected(clientConn *proxy.ClientConn) {
-	log.Printf("[CLIENT] New client connected")
+	slog.Debug("New client connected", "type", "CLIENT")
 }
 
 func (p *BaseLogPlugin) Request(f *proxy.Flow) {
 	if f != nil && f.Request != nil {
-		log.Printf("[REQUEST] %s %s", f.Request.Method, f.Request.URL.String())
+		slog.Debug("Request", "method", f.Request.Method, "url", f.Request.URL.String())
 
 		// Accept-Encodingヘッダーを確認
 		if acceptEncoding := f.Request.Header.Get("Accept-Encoding"); acceptEncoding != "" {
-			log.Printf("[COMPRESSION] Client Accept-Encoding: %s", acceptEncoding)
+			slog.Debug("Client Accept-Encoding", "encoding", acceptEncoding)
 		}
 	}
 }
 
 func (p *BaseLogPlugin) Response(f *proxy.Flow) {
 	if f != nil && f.Response != nil && f.Request != nil {
-		log.Printf("[RESPONSE] %s %s %d (Proto: %s)",
-			f.Request.Method, f.Request.URL.String(), f.Response.StatusCode, f.Request.Proto)
+		slog.Debug("Response",
+			"method", f.Request.Method,
+			"url", f.Request.URL.String(),
+			"status", f.Response.StatusCode,
+			"proto", f.Request.Proto)
 
 		// 圧縮情報をログ出力
 		if contentEncoding := f.Response.Header.Get("Content-Encoding"); contentEncoding != "" {
-			log.Printf("[COMPRESSION] Content-Encoding: %s", contentEncoding)
+			slog.Debug("Content-Encoding", "encoding", contentEncoding)
 		}
 
 		// Content-Lengthの情報も確認
 		if contentLength := f.Response.Header.Get("Content-Length"); contentLength != "" {
-			log.Printf("[SIZE] Content-Length: %s bytes", contentLength)
+			slog.Debug("Content-Length", "bytes", contentLength)
 		}
 	}
 }

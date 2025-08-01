@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"os/signal"
@@ -118,8 +118,10 @@ func (p *RecordingPlugin) Response(f *proxy.Flow) {
 					transaction.ResponseFinished = responseStartTime.Add(10 * time.Millisecond)
 				}
 
-				log.Printf("[RECORDING] Recorded transaction: %s %s (%d bytes)",
-					transaction.Method, transaction.URL, len(transaction.Body))
+				slog.Debug("Recorded transaction",
+					"method", transaction.Method,
+					"url", transaction.URL,
+					"bytes", len(transaction.Body))
 				break
 			}
 		}
@@ -140,8 +142,9 @@ func (p *RecordingPlugin) SaveInventory() error {
 		return fmt.Errorf("failed to save recorded transactions: %w", err)
 	}
 
-	log.Printf("[RECORDING] Saved inventory with %d transactions to %s", 
-		len(p.transactions), p.inventoryDir)
+	slog.Debug("Saved inventory",
+		"transactions", len(p.transactions),
+		"directory", p.inventoryDir)
 
 	return nil
 }
@@ -169,23 +172,26 @@ func StartRecording(targetURL string, port int, inventoryDir string, noBeautify 
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		<-c
 
-		log.Println("Shutdown signal received, saving inventory...")
+		slog.Info("Shutdown signal received, saving inventory...")
 		if err := recordingPlugin.SaveInventory(); err != nil {
-			log.Printf("Failed to save inventory: %v", err)
+			slog.Error("Failed to save inventory", "error", err)
 		} else {
-			log.Println("Inventory saved successfully")
+			slog.Info("Inventory saved successfully")
 		}
 		
 		// Give time for file operations to complete
 		time.Sleep(1 * time.Second)
-		log.Println("Shutdown complete")
+		slog.Info("Shutdown complete")
 		os.Exit(0)
 	}()
 
 	// Start proxy manually (don't use startProxyWithShutdown to avoid conflicting signal handlers)
-	log.Printf("MITM プロキシサーバーを開始します（ポート: %d）", port)
-	log.Printf("プロキシ設定: http://localhost:%d", port)
+	slog.Info("Starting MITM proxy server", "port", port)
+	slog.Info("Proxy settings", "url", fmt.Sprintf("http://localhost:%d", port))
 	
-	log.Fatal(p.Start())
+	if err := p.Start(); err != nil {
+		slog.Error("Proxy start failed", "error", err)
+		os.Exit(1)
+	}
 	return nil
 }

@@ -32,7 +32,7 @@ recording() {
     echo "Running recording mode test..."
     
     # Start recording proxy
-    ./http-playback-proxy --port $PORT --no-beautify recording $URL &
+    ./http-playback-proxy recording --port $PORT --no-beautify $URL &
     RECORD_PID=$!
     sleep 2
     
@@ -70,7 +70,7 @@ playback() {
     fi
     
     # Start playback proxy
-    ./http-playback-proxy --port $PORT playback &
+    ./http-playback-proxy playback --port $PORT &
     PLAYBACK_PID=$!
     sleep 2
     
