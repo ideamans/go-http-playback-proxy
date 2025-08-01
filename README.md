@@ -6,8 +6,6 @@ A Go-based MITM proxy with HTTP/HTTPS traffic recording and playback capabilitie
 
 - **MITM Proxy**: Complete HTTP/HTTPS traffic monitoring and recording
 - **Compression Preservation**: Maintains response compression state for performance optimization
-- **DNS Monitoring**: Detailed DNS resolution process logging
-- **TypeScript Compatible**: Fully compatible type definitions with TypeScript
 - **URL-to-Filepath Conversion**: Converts HTTP requests to appropriate file paths
 - **Content Optimization**: HTML/CSS/JavaScript beautification and minification
 
@@ -45,8 +43,9 @@ make build
 ### Download Binaries
 
 Pre-built binaries are available from the [Releases](https://github.com/ideamans/go-http-playback-proxy/releases) page for:
+
 - Linux (amd64, arm64)
-- macOS (amd64, arm64) 
+- macOS (amd64, arm64)
 - Windows (amd64)
 - FreeBSD (amd64)
 
@@ -89,6 +88,7 @@ Records all HTTP/HTTPS traffic to the specified URL pattern:
 ```
 
 Recorded data is saved to:
+
 ```
 ./inventory/
 ├── inventory.json     # Resource metadata and domain info
@@ -105,6 +105,7 @@ Replays recorded traffic with accurate timing:
 ```
 
 Features:
+
 - Preserves original TTFB (Time To First Byte)
 - Maintains transfer speeds (Mbps)
 - Adds `x-playback-proxy: 1` header to responses
@@ -115,6 +116,7 @@ Features:
 ### Content Encoding Support
 
 Supports multiple compression formats:
+
 - **Gzip**: RFC 1952 compliant
 - **Deflate**: RFC 1951 compliant
 - **Brotli**: Google's compression algorithm
@@ -124,6 +126,7 @@ Supports multiple compression formats:
 ### Character Encoding Support
 
 Automatic character encoding detection and conversion:
+
 - Detects charset from HTTP headers and HTML meta tags
 - Converts to UTF-8 for storage
 - Restores original encoding during playback
@@ -132,6 +135,7 @@ Automatic character encoding detection and conversion:
 ### Content Optimization
 
 Optional beautification and minification:
+
 - **HTML**: Formatting with gohtml
 - **CSS**: Manual indentation formatting
 - **JavaScript**: Beautification with jsbeautifier-go
@@ -150,6 +154,7 @@ GET https://example.com/image.jpg?param=value
 ```
 
 Features:
+
 - Directory paths automatically append `/index.html`
 - Query parameters preserved with `~` separator
 - Long parameters (>32 chars) hashed with SHA1
@@ -209,6 +214,7 @@ method, url, err := FilePathToMethodURL("get/https/example.com/api/index~user=12
 ## CI/CD
 
 GitHub Actions workflows:
+
 - **CI**: Tests on push to main/develop branches
 - **Release**: Automated releases with GoReleaser on version tags
 

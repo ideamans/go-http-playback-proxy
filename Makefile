@@ -1,4 +1,4 @@
-.PHONY: build test setup-integration test-integration lighthouse
+.PHONY: build test setup-integration test-integration lighthouse clean
 
 # デフォルトターゲット
 .DEFAULT_GOAL := build
@@ -8,8 +8,8 @@ BINARY_NAME := http-playback-proxy
 
 # ビルド
 build:
-	go build -o $(BINARY_NAME) .
-	go test -c -o $(BINARY_NAME).test .
+	go build -o $(BINARY_NAME) ./cmd/http-playback-proxy
+	go test -c -o $(BINARY_NAME).test ./cmd/http-playback-proxy
 
 # テスト実行
 test:
@@ -37,3 +37,10 @@ test-integration: build
 lighthouse: build
 	@echo "Lighthouseテストを実行しています..."
 	@./lighthouse.sh
+
+# クリーンアップ
+clean:
+	@echo "ビルド成果物をクリーンアップしています..."
+	@rm -f $(BINARY_NAME)
+	@rm -f $(BINARY_NAME).test
+	@echo "クリーンアップが完了しました"
