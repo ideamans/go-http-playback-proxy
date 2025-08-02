@@ -39,7 +39,15 @@ test-integration:
 	@ls -la
 	@echo "Building binary first..."
 	$(MAKE) build
-	@cd integration && ./run-integration-tests.sh --skip-setup --basic-only
+	@cd integration && ./run-integration-tests.sh --skip-setup --basic-only --verbose
+
+# 統合テスト実行（全テスト）
+test-integration-all:
+	@echo "全ての統合テストを実行しています..."
+	@echo "Current directory: $$(pwd)"
+	@echo "Building binary first..."
+	$(MAKE) build
+	@cd integration && ./run-integration-tests.sh --skip-setup --verbose
 
 # Lighthouse パフォーマンステスト
 lighthouse: build

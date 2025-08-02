@@ -136,6 +136,11 @@ func (b *ProxyBuilder) GetPort() int {
 	return b.port
 }
 
+// GetInventoryDir returns the configured inventory directory
+func (b *ProxyBuilder) GetInventoryDir() string {
+	return b.inventoryDir
+}
+
 // setupLogger configures the logger
 func (b *ProxyBuilder) setupLogger() error {
 	// Parse log level

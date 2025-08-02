@@ -483,18 +483,6 @@ func compareResponses(t *testing.T, tc TestCase, direct, recording, playback *HT
 	t.Logf("✅ Response comparison passed: %d bytes, %s", len(directBody), direct.ContentType)
 }
 
-// ファイル名として安全な文字列に変換
-func sanitizeFileName(name string) string {
-	safe := ""
-	for _, r := range name {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
-			safe += string(r)
-		} else {
-			safe += "_"
-		}
-	}
-	return safe
-}
 
 // 圧縮データの展開（簡易実装）
 func decompressIfNeeded(data []byte, encoding string) []byte {
