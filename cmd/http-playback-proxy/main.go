@@ -31,7 +31,7 @@ func main() {
 		}
 		
 	case "playback":
-		if err := executePlayback(builder); err != nil {
+		if err := executePlayback(builder, cli.Playback.Watch); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -53,7 +53,7 @@ func executeRecording(builder *ProxyBuilder, targetURL string, noBeautify bool) 
 	return nil
 }
 
-func executePlayback(builder *ProxyBuilder) error {
+func executePlayback(builder *ProxyBuilder, watch bool) error {
 	// Build playback proxy
 	p, err := builder.BuildPlaybackProxy()
 	if err != nil {
@@ -61,6 +61,10 @@ func executePlayback(builder *ProxyBuilder) error {
 	}
 	
 	// Start proxy
-	startProxyWithShutdown(p, builder.GetPort())
+	if watch {
+		startPlaybackProxyWithWatch(p, builder.GetPort(), builder.GetInventoryDir())
+	} else {
+		startProxyWithShutdown(p, builder.GetPort())
+	}
 	return nil
 }

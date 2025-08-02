@@ -324,3 +324,22 @@ func (p *PlaybackPlugin) GetTransactionCount() int {
 	defer p.mutex.RUnlock()
 	return len(p.transactionMap)
 }
+
+// ReloadInventory reloads the inventory from disk
+func (p *PlaybackPlugin) ReloadInventory() error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	// Clear current transaction map
+	p.transactionMap = make(map[string]*types.PlaybackTransaction)
+
+	// Create a new playback manager to force reload
+	p.playbackManager = inventory.NewPlaybackManager(p.inventoryDir)
+
+	// Reload inventory
+	if err := p.loadInventory(); err != nil {
+		return fmt.Errorf("failed to reload inventory: %w", err)
+	}
+
+	return nil
+}

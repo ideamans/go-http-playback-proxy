@@ -248,6 +248,17 @@ else
     FAILED_TESTS="$FAILED_TESTS basic"
 fi
 
+# Watchモードテスト
+if [ "$RUN_BASIC" = true ]; then
+    log_info "Running watch mode tests..."
+    if go test $TEST_FLAGS -timeout 60s -run TestPlaybackWatchMode .; then
+        log_success "Watch mode tests passed"
+    else
+        log_error "Watch mode tests failed"
+        FAILED_TESTS="$FAILED_TESTS watch"
+    fi
+fi
+
 # 包括的統合テスト（3段階: 直接・recording・playback）
 if [ "$RUN_CHARSET" = true ] || [ "$RUN_URL_PATTERNS" = true ]; then
     log_info "Running comprehensive integration tests..."
