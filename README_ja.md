@@ -6,8 +6,6 @@ HTTP/HTTPS 通信の記録・再生機能を持つ Go 言語製 MITM プロキ�
 
 - **MITM プロキシ**: HTTP/HTTPS 通信の完全な監視・記録
 - **圧縮保持**: パフォーマンス最適化のためレスポンスの圧縮状態を維持
-- **DNS 監視**: DNS 解決プロセスの詳細なログ記録
-- **TypeScript 互換**: TypeScript と完全互換の型定義
 - **URL-ファイルパス変換**: HTTP リクエストを適切なファイルパスに変換
 - **コンテンツ最適化**: HTML/CSS/JavaScript の整形・圧縮機能
 
@@ -45,8 +43,9 @@ make build
 ### バイナリのダウンロード
 
 [リリースページ](https://github.com/ideamans/go-http-playback-proxy/releases)から以下のプラットフォーム向けビルド済みバイナリが利用可能です：
+
 - Linux (amd64, arm64)
-- macOS (amd64, arm64) 
+- macOS (amd64, arm64)
 - Windows (amd64)
 - FreeBSD (amd64)
 
@@ -89,6 +88,7 @@ google-chrome --proxy-server=localhost:8080 --ignore-certificate-errors --ignore
 ```
 
 記録データの保存先：
+
 ```
 ./inventory/
 ├── inventory.json     # リソースのメタデータとドメイン情報
@@ -105,6 +105,7 @@ google-chrome --proxy-server=localhost:8080 --ignore-certificate-errors --ignore
 ```
 
 特徴：
+
 - オリジナルの TTFB（Time To First Byte）を保持
 - 転送速度（Mbps）を維持
 - レスポンスに `x-playback-proxy: 1` ヘッダーを追加
@@ -115,6 +116,7 @@ google-chrome --proxy-server=localhost:8080 --ignore-certificate-errors --ignore
 ### コンテンツエンコーディング対応
 
 複数の圧縮形式をサポート：
+
 - **Gzip**: RFC 1952 準拠
 - **Deflate**: RFC 1951 準拠
 - **Brotli**: Google の圧縮アルゴリズム
@@ -124,6 +126,7 @@ google-chrome --proxy-server=localhost:8080 --ignore-certificate-errors --ignore
 ### 文字エンコーディング対応
 
 文字エンコーディングの自動検出と変換：
+
 - HTTP ヘッダーと HTML メタタグから charset を検出
 - 保存時に UTF-8 に変換
 - 再生時に元のエンコーディングを復元
@@ -132,6 +135,7 @@ google-chrome --proxy-server=localhost:8080 --ignore-certificate-errors --ignore
 ### コンテンツ最適化
 
 オプションの整形と圧縮：
+
 - **HTML**: gohtml による整形
 - **CSS**: 手動インデント整形
 - **JavaScript**: jsbeautifier-go による整形
@@ -150,9 +154,10 @@ GET https://example.com/image.jpg?param=value
 ```
 
 特徴：
+
 - ディレクトリパスは自動的に `/index.html` を付与
 - クエリパラメータは `~` 区切りで保持
-- 長いパラメータ（32文字超）は SHA1 でハッシュ化
+- 長いパラメータ（32 文字超）は SHA1 でハッシュ化
 - 国際文字の完全な Unicode サポート
 
 ## パフォーマンス
@@ -209,6 +214,7 @@ method, url, err := FilePathToMethodURL("get/https/example.com/api/index~user=12
 ## CI/CD
 
 GitHub Actions ワークフロー：
+
 - **CI**: main/develop ブランチへのプッシュ時にテスト実行
 - **リリース**: バージョンタグ時に GoReleaser で自動リリース
 

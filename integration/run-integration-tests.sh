@@ -127,8 +127,8 @@ if ! command -v go &> /dev/null; then
     exit 1
 fi
 
-if [ ! -f "$PROJECT_ROOT/main.go" ]; then
-    log_error "Main proxy project not found at $PROJECT_ROOT"
+if [ ! -f "$PROJECT_ROOT/cmd/http-playback-proxy/main.go" ]; then
+    log_error "Main proxy project not found at $PROJECT_ROOT/cmd/http-playback-proxy"
     exit 1
 fi
 
@@ -154,9 +154,9 @@ mkdir -p "$TEMP_DIR"
 log_info "Building main proxy..."
 cd "$PROJECT_ROOT"
 if [ "$VERBOSE" = true ]; then
-    go build -o "$TEMP_DIR/http-playback-proxy" .
+    go build -o "$TEMP_DIR/http-playback-proxy" ./cmd/http-playback-proxy
 else
-    go build -o "$TEMP_DIR/http-playback-proxy" . > /dev/null 2>&1
+    go build -o "$TEMP_DIR/http-playback-proxy" ./cmd/http-playback-proxy > /dev/null 2>&1
 fi
 
 if [ $? -ne 0 ]; then

@@ -28,8 +28,8 @@ go.work.sum
 .env
 
 /inventory/
-http-playback-proxy
-go-http-playback-proxy
+/http-playback-proxy
+/go-http-playback-proxy
 /lighthouse/
 
 # Integration test files
