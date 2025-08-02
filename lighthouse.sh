@@ -5,6 +5,10 @@ URL="https://www.ideamans.com/"
 PORT=8080
 INVENTORY=./inventory
 LIGHTHOUSE=./lighthouse
+# Set LIGHTHOUSE_LOGGING to any non-empty value (except "false" or "0") to enable lighthouse logs
+# Examples: LIGHTHOUSE_LOGGING=true ./lighthouse.sh
+#          LIGHTHOUSE_LOGGING=1 ./lighthouse.sh
+LIGHTHOUSE_LOGGING=""
 
 # Setup function
 setup() {
@@ -12,18 +16,30 @@ setup() {
     mkdir -p $LIGHTHOUSE
     make clean && make build
     rm -rf $INVENTORY
-    yarn
+    if [ -n "$LIGHTHOUSE_LOGGING" ] && [ "$LIGHTHOUSE_LOGGING" != "false" ] && [ "$LIGHTHOUSE_LOGGING" != "0" ]; then
+        yarn
+    else
+        yarn > /dev/null 2>&1
+    fi
     echo "Setup completed."
 }
 
 # Baseline test function
 baseline() {
     echo "Running baseline Lighthouse test..."
-    yarn lighthouse $URL \
-      --only-categories=performance \
-      --output=html \
-      --output-path=$LIGHTHOUSE/lighthouse-baseline.html \
-      --view
+    if [ -n "$LIGHTHOUSE_LOGGING" ] && [ "$LIGHTHOUSE_LOGGING" != "false" ] && [ "$LIGHTHOUSE_LOGGING" != "0" ]; then
+        yarn lighthouse $URL \
+          --only-categories=performance \
+          --output=html \
+          --output-path=$LIGHTHOUSE/lighthouse-baseline.html \
+          --view
+    else
+        yarn lighthouse $URL \
+          --only-categories=performance \
+          --output=html \
+          --output-path=$LIGHTHOUSE/lighthouse-baseline.html \
+          --view > /dev/null 2>&1
+    fi
     echo "Baseline test completed."
 }
 
@@ -32,22 +48,31 @@ recording() {
     echo "Running recording mode test..."
     
     # Start recording proxy
-    ./http-playback-proxy --port $PORT --no-beautify recording $URL &
+    ./http-playback-proxy --port $PORT --inventory-dir $INVENTORY recording --no-beautify $URL &
     RECORD_PID=$!
     sleep 2
     
     # Run Lighthouse through proxy
-    yarn lighthouse $URL \
-      --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
-      --only-categories=performance \
-      --output=html \
-      --output-path=$LIGHTHOUSE/lighthouse-recording.html \
-      --view
+    if [ -n "$LIGHTHOUSE_LOGGING" ] && [ "$LIGHTHOUSE_LOGGING" != "false" ] && [ "$LIGHTHOUSE_LOGGING" != "0" ]; then
+        yarn lighthouse $URL \
+          --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
+          --only-categories=performance \
+          --output=html \
+          --output-path=$LIGHTHOUSE/lighthouse-recording.html \
+          --view
+    else
+        yarn lighthouse $URL \
+          --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
+          --only-categories=performance \
+          --output=html \
+          --output-path=$LIGHTHOUSE/lighthouse-recording.html \
+          --view > /dev/null 2>&1
+    fi
     
-    # Stop proxy
-    kill $RECORD_PID 2>/dev/null || true
+    # Stop proxy (send interrupt signal to trigger graceful shutdown)
+    kill -INT $RECORD_PID 2>/dev/null || true
     wait $RECORD_PID 2>/dev/null || true
-    sleep 2
+    sleep 3
     
     # Show inventory stats
     if [ -f "$INVENTORY/inventory.json" ]; then
@@ -70,20 +95,29 @@ playback() {
     fi
     
     # Start playback proxy
-    ./http-playback-proxy --port $PORT playback &
+    ./http-playback-proxy --port $PORT --inventory-dir $INVENTORY playback &
     PLAYBACK_PID=$!
     sleep 2
     
     # Run Lighthouse through proxy
-    yarn lighthouse $URL \
-      --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
-      --only-categories=performance \
-      --output=html \
-      --output-path=$LIGHTHOUSE/lighthouse-playback.html \
-      --view
+    if [ -n "$LIGHTHOUSE_LOGGING" ] && [ "$LIGHTHOUSE_LOGGING" != "false" ] && [ "$LIGHTHOUSE_LOGGING" != "0" ]; then
+        yarn lighthouse $URL \
+          --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
+          --only-categories=performance \
+          --output=html \
+          --output-path=$LIGHTHOUSE/lighthouse-playback.html \
+          --view
+    else
+        yarn lighthouse $URL \
+          --chrome-flags="--proxy-server=127.0.0.1:$PORT --ignore-certificate-errors --disable-web-security" \
+          --only-categories=performance \
+          --output=html \
+          --output-path=$LIGHTHOUSE/lighthouse-playback.html \
+          --view > /dev/null 2>&1
+    fi
     
     # Stop proxy
-    kill $PLAYBACK_PID 2>/dev/null || true
+    kill -INT $PLAYBACK_PID 2>/dev/null || true
     wait $PLAYBACK_PID 2>/dev/null || true
     
     echo "Playback test completed."

@@ -82,7 +82,7 @@ func (pc *ProxyController) StartRecording(targetURL string) error {
 	// プロキシを recording モードで起動
 	cmd := exec.Command(pc.ProxyPath,
 		"--port", fmt.Sprintf("%d", pc.Port),
-		"--inventory", pc.InventoryDir,
+		"--inventory-dir", pc.InventoryDir,
 		"recording", targetURL)
 
 	if err := cmd.Start(); err != nil {
@@ -111,7 +111,7 @@ func (pc *ProxyController) StartPlayback() error {
 	// プロキシを playback モードで起動
 	cmd := exec.Command(pc.ProxyPath,
 		"--port", fmt.Sprintf("%d", pc.Port),
-		"--inventory", pc.InventoryDir,
+		"--inventory-dir", pc.InventoryDir,
 		"playback")
 
 	if err := cmd.Start(); err != nil {
@@ -135,9 +135,9 @@ func (pc *ProxyController) Stop() error {
 		return nil
 	}
 
-	// SIGTERM でプロセスを終了
-	if err := pc.Process.Process.Signal(syscall.SIGTERM); err != nil {
-		// SIGTERM が効かない場合は SIGKILL
+	// SIGINT でプロセスを終了（graceful shutdown）
+	if err := pc.Process.Process.Signal(syscall.SIGINT); err != nil {
+		// SIGINT が効かない場合は SIGKILL
 		pc.Process.Process.Kill()
 	}
 

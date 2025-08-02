@@ -9,6 +9,7 @@ Go 言語製の MITM プロキシです。HTTP/HTTPS 通信の記録・再生機
 - **DNS 監視**: DNS 解決プロセスの詳細ログ
 - **TypeScript 互換**: 型定義が TypeScript と完全互換
 - **URL-ファイルパス変換**: HTTP リクエストを適切なファイルパスに変換
+- **コンテンツ最適化**: HTML/CSS/JavaScript の整形・圧縮
 
 ## アーキテクチャ
 
@@ -19,13 +20,15 @@ Go 言語製の MITM プロキシです。HTTP/HTTPS 通信の記録・再生機
 
 ### コア機能
 
-#### 1. MITM プロキシ (`main.go`)
+#### 1. MITM プロキシ (`main.go`, `proxy.go`)
 
 - HTTP/1.1 強制で HTTP/2 エラーを回避
 - 自己署名証明書による HTTPS 対応
 - SSL/TLS エラー完全無視
 - 接続プール・Keep-Alive 最適化
 - DNS 解決時間と IP アドレスの詳細ログ
+- Kong ベースの CLI パーサー
+- slogcolor による美しいカラー出力
 
 #### 2. 型定義システム (`types.go`)
 
@@ -44,7 +47,7 @@ Go 言語製の MITM プロキシです。HTTP/HTTPS 通信の記録・再生機
 - 4 つの圧縮形式をサポート:
   - **Gzip**: RFC 1952 準拠
   - **Deflate**: RFC 1951 準拠
-  - **Brotli**: Google 開発
+  - **Brotli**: Google 開発（andybalholm/brotli）
   - **Zstd**: Facebook 開発（klauspost/compress）
   - **Identity**: 無圧縮パススルー
 
@@ -56,11 +59,17 @@ Go 言語製の MITM プロキシです。HTTP/HTTPS 通信の記録・再生機
 - 対応文字コード: Shift_JIS, EUC-JP, ISO-8859-1 等
 - 変換失敗時の安全な処理（-failed サフィックス）
 
-#### 5. フォーマット判定システム (`formatting.go`)
+#### 5. フォーマット判定・最適化システム (`formatting.go`)
 
 - コンテンツタイプの正確な判定
 - HTML, CSS, JavaScript の識別
 - 文字コード処理が必要なフォーマットの特定
+- 整形（Beautify）機能:
+  - HTML: gohtml による整形
+  - CSS: 手動インデント整形
+  - JavaScript: jsbeautifier-go による整形
+- 圧縮（Minify）機能:
+  - tdewolff/minify による HTML/CSS/JavaScript 圧縮
 
 #### 6. リソースパス変換システム (`resource.go`)
 
@@ -100,10 +109,17 @@ GET https://example.com/image.jpg?param=value
 make build
 
 # recordingモード（指定URLへの通信を ./inventory に記録）
-./http-playback-proxy --port 8080 recording https://www.example.com/
+./http-playback-proxy recording https://www.example.com/
+# または --no-beautify オプションで整形を無効化
+./http-playback-proxy recording --no-beautify https://www.example.com/
 
 # playbackモード（./inventory から再生、未記録は上流プロキシ）
-./http-playback-proxy --port 8080 playback
+./http-playback-proxy playback
+
+# オプション
+--port, -p          プロキシサーバーのポート番号 (デフォルト: 8080)
+--inventory-dir, -i inventoryディレクトリのパス (デフォルト: ./inventory)
+--log-level, -l     ログレベル (debug, info, warn, error) (デフォルト: info)
 ```
 
 ### プロキシ設定
@@ -167,9 +183,15 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 
 ### 依存関係
 
-- `github.com/lqqyt2423/go-mitmproxy/proxy`: MITM プロキシ基盤
+- `github.com/lqqyt2423/go-mitmproxy`: MITM プロキシ基盤
+- `github.com/alecthomas/kong`: コマンドラインパーサー
+- `github.com/MatusOllah/slogcolor`: 構造化ログのカラー出力
+- `github.com/andybalholm/brotli`: Brotli 圧縮
+- `github.com/klauspost/compress`: Zstd 圧縮
+- `github.com/tdewolff/minify`: HTML/CSS/JavaScript 圧縮
+- `github.com/yosssi/gohtml`: HTML 整形
+- `github.com/ditashi/jsbeautifier-go`: JavaScript 整形
 - `golang.org/x/text`: 文字コード変換
-- 標準ライブラリのみで最小構成
 
 ### ファイル構成
 
@@ -187,7 +209,7 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 
 - `charset.go`: HTML/CSS の文字コード検出・変換
 - `encoding.go`: HTTP Content-Encoding 処理（gzip, deflate, brotli, zstd）
-- `formatting.go`: コンテンツフォーマット判定（HTML, CSS, JavaScript 等）
+- `formatting.go`: コンテンツフォーマット判定と最適化（整形・圧縮）
 
 #### テスト・自動化
 
@@ -220,6 +242,7 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 - 型システム（types_test.go）
 - インベントリ管理（inventory_test.go）
 - 録画・再生機能（recording_test.go, playback_test.go）
+- コンテンツ最適化（formatting_test.go）
 
 #### 統合テスト（integration/）
 
@@ -246,6 +269,7 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 - 自動 Mbps 計算（転送時間とデータサイズから算出）
 - Ctrl+C でシグナル処理によるインベントリ保存
 - 圧縮されたレスポンスを自動デコードして保存
+- オプションで HTML/CSS/JavaScript の整形機能
 
 **保存構造**:
 
@@ -274,7 +298,7 @@ safePath, err := GetResourceFilePath("GET", "https://example.com/CON.txt")
 
 ### チャンク時間計算アルゴリズム
 
-**録画時の Mbps 計算** (`inventory.go:103-114`):
+**録画時の Mbps 計算** (`inventory.go`):
 
 ```go
 transferDuration := transaction.ResponseFinished.Sub(transaction.ResponseStarted)
@@ -283,7 +307,7 @@ transferSeconds := transferDuration.Seconds()
 mbpsValue := totalBits / (transferSeconds * 1024 * 1024)
 ```
 
-**再生時のチャンク時間計算** (`inventory.go:407-413`):
+**再生時のチャンク時間計算** (`inventory.go`):
 
 ```go
 // チャンクの進行率計算
@@ -294,7 +318,7 @@ chunkTime := time.Duration(float64(totalTransferTime) * chunkProgress)
 targetOffset := time.Duration(resource.TTFBMS)*time.Millisecond + chunkTime
 ```
 
-**再生時の待機制御** (`playback.go:156-189`):
+**再生時の待機制御** (`playback.go`):
 
 ```go
 targetSendTime = requestStartTime.Add(chunk.TargetOffset)
@@ -387,6 +411,9 @@ make test-integration
 
 # Lighthouse パフォーマンステスト
 make lighthouse
+
+# すべてのテスト実行
+make test-all
 ```
 
 ### 使用例
@@ -402,22 +429,36 @@ make lighthouse
 
 ## CI/CD パイプライン
 
-GitHub Actions で次のパイプラインを実装する。
+GitHub Actions で次のパイプラインを実装しています。
 
-### develop と main への push
+### develop と main への push (`ci.yml`)
 
-- Go 1.24 \* (windows, linux, macos)のマトリクス
+- Go 1.24.x (windows, linux, macos) のマトリクス
 - 単体テスト
-- 結合テスト
+- 統合テスト
+- ビルド検証
 
-### v\*タグの push
+### v* タグの push (`release.yml`)
 
 - goreleaser によるリリース
-- linux, macos(arm64, amd64), windows(amd64), FreeBSD(13, amd64)のバイナリをクロスコンパイルで生成
+- linux, macos(arm64, amd64), windows(amd64), FreeBSD(amd64) のバイナリをクロスコンパイルで生成
+- GitHub Release の自動作成
+- チェックサムファイルの生成
+
+### GoReleaser 設定 (`.goreleaser.yaml`)
+
+- プロジェクト名: go-http-playback-proxy
+- CGO 無効化によるスタティックバイナリ
+- ビルドフラグ: `-s -w` でバイナリサイズ最適化
+- アーカイブ形式:
+  - Linux/macOS/FreeBSD: tar.gz
+  - Windows: zip
+- GitHub リリース: ideamans/go-http-playback-proxy
 
 ## TODO
 
-- [ ] CI/CD パイプライン構築
-- [ ] Docker コンテナ対応
 - [ ] WebSocket プロキシ対応
 - [ ] HTTP/2 サポート検討
+- [ ] Docker コンテナ対応
+- [ ] プロキシ認証機能
+- [ ] リクエスト・レスポンスの編集機能
