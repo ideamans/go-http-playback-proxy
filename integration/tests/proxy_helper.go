@@ -11,7 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"syscall"
+	"testing"
 	"time"
 )
 
@@ -547,4 +549,82 @@ func LoadInventory(inventoryDir string) (*Inventory, error) {
 	}
 
 	return &inventory, nil
+}
+
+// sanitizeFileName ファイル名として安全な文字列に変換
+func sanitizeFileName(name string) string {
+	safe := ""
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			safe += string(r)
+		} else {
+			safe += "_"
+		}
+	}
+	return safe
+}
+
+// startPlaybackProxyWithArgs starts the playback proxy with custom arguments
+func startPlaybackProxyWithArgs(t *testing.T, args ...string) *exec.Cmd {
+	proxyPath := "../http-playback-proxy"
+	if runtime.GOOS == "windows" {
+		proxyPath += ".exe"
+	}
+	if _, err := os.Stat(proxyPath); os.IsNotExist(err) {
+		t.Fatalf("Proxy binary not found at %s", proxyPath)
+	}
+
+	// Parse args to separate global options from command-specific options
+	var globalArgs []string
+	var playbackArgs []string
+	isPlaybackArg := false
+	
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--watch" {
+			isPlaybackArg = true
+			playbackArgs = append(playbackArgs, args[i])
+		} else if i < len(args)-1 && (args[i] == "-i" || args[i] == "--inventory-dir" || args[i] == "-p" || args[i] == "--port") {
+			// These are global options that come before the command
+			globalArgs = append(globalArgs, args[i], args[i+1])
+			i++ // Skip the next argument as it's the value
+		} else {
+			if isPlaybackArg {
+				playbackArgs = append(playbackArgs, args[i])
+			} else {
+				globalArgs = append(globalArgs, args[i])
+			}
+		}
+	}
+	
+	// Build command line: global args, then "playback", then playback-specific args
+	cmdArgs := append(globalArgs, "playback")
+	cmdArgs = append(cmdArgs, playbackArgs...)
+	
+	cmd := exec.Command(proxyPath, cmdArgs...)
+	
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Failed to start proxy: %v", err)
+	}
+
+	return cmd
+}
+
+// stopProxy stops a running proxy command
+func stopProxy(cmd *exec.Cmd) {
+	if cmd != nil && cmd.Process != nil {
+		cmd.Process.Signal(syscall.SIGINT)
+		done := make(chan error, 1)
+		go func() {
+			done <- cmd.Wait()
+		}()
+		
+		select {
+		case <-done:
+			// Process exited normally
+		case <-time.After(3 * time.Second):
+			// Force kill after timeout
+			cmd.Process.Kill()
+			<-done
+		}
+	}
 }

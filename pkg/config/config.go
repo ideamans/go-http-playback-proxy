@@ -16,6 +16,7 @@ type CLI struct {
 	} `cmd:"" help:"指定URLへの通信を記録"`
 
 	Playback struct {
+		Watch bool `help:"inventoryディレクトリの変更を監視して自動リロード"`
 	} `cmd:"" help:"記録した通信を再生"`
 }
 
@@ -42,6 +43,7 @@ type PlaybackConfig struct {
 	ChunkSize       int
 	EnableUpstream  bool
 	UpstreamTimeout time.Duration
+	Watch           bool
 }
 
 // ProxyConfig holds proxy-specific configuration
