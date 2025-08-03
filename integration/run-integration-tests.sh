@@ -9,6 +9,12 @@ TESTSERVER_DIR="$SCRIPT_DIR/testserver"
 TESTS_DIR="$SCRIPT_DIR/tests"
 TEMP_DIR="$SCRIPT_DIR/temp"
 
+# OS detection for binary extension
+BINARY_EXT=""
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    BINARY_EXT=".exe"
+fi
+
 # 色付きログ用
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -56,9 +62,9 @@ cleanup() {
     fi
     
     # コピーしたプロキシバイナリを削除
-    if [ -f "$SCRIPT_DIR/http-playback-proxy" ]; then
+    if [ -f "$SCRIPT_DIR/http-playback-proxy${BINARY_EXT}" ]; then
         log_info "Removing copied proxy binary"
-        rm -f "$SCRIPT_DIR/http-playback-proxy"
+        rm -f "$SCRIPT_DIR/http-playback-proxy${BINARY_EXT}"
     fi
 }
 
@@ -160,9 +166,9 @@ mkdir -p "$TEMP_DIR"
 log_info "Building main proxy..."
 cd "$PROJECT_ROOT"
 if [ "$VERBOSE" = true ]; then
-    go build -o "$TEMP_DIR/http-playback-proxy" ./cmd/http-playback-proxy
+    go build -o "$TEMP_DIR/http-playback-proxy${BINARY_EXT}" ./cmd/http-playback-proxy
 else
-    go build -o "$TEMP_DIR/http-playback-proxy" ./cmd/http-playback-proxy > /dev/null 2>&1
+    go build -o "$TEMP_DIR/http-playback-proxy${BINARY_EXT}" ./cmd/http-playback-proxy > /dev/null 2>&1
 fi
 
 if [ $? -ne 0 ]; then
@@ -173,7 +179,7 @@ log_success "Main proxy built successfully"
 
 # Copy proxy binary to integration directory for tests
 log_info "Copying proxy binary to integration directory..."
-cp "$TEMP_DIR/http-playback-proxy" "$SCRIPT_DIR/http-playback-proxy"
+cp "$TEMP_DIR/http-playback-proxy${BINARY_EXT}" "$SCRIPT_DIR/http-playback-proxy${BINARY_EXT}"
 if [ $? -ne 0 ]; then
     log_error "Failed to copy proxy binary"
     exit 1
@@ -192,9 +198,9 @@ fi
 
 # テストサーバービルド
 if [ "$VERBOSE" = true ]; then
-    go build -o "$TEMP_DIR/testserver" .
+    go build -o "$TEMP_DIR/testserver${BINARY_EXT}" .
 else
-    go build -o "$TEMP_DIR/testserver" . > /dev/null 2>&1
+    go build -o "$TEMP_DIR/testserver${BINARY_EXT}" . > /dev/null 2>&1
 fi
 
 if [ $? -ne 0 ]; then
@@ -204,7 +210,7 @@ fi
 
 # テストサーバー起動
 log_info "Starting test server on port 9999..."
-"$TEMP_DIR/testserver" 9999 > "$TEMP_DIR/testserver.log" 2>&1 &
+"$TEMP_DIR/testserver${BINARY_EXT}" 9999 > "$TEMP_DIR/testserver.log" 2>&1 &
 TESTSERVER_PID=$!
 
 # サーバー起動待ち

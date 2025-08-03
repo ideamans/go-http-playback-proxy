@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"testing"
 	"time"
@@ -566,6 +567,9 @@ func sanitizeFileName(name string) string {
 // startPlaybackProxyWithArgs starts the playback proxy with custom arguments
 func startPlaybackProxyWithArgs(t *testing.T, args ...string) *exec.Cmd {
 	proxyPath := "../http-playback-proxy"
+	if runtime.GOOS == "windows" {
+		proxyPath += ".exe"
+	}
 	if _, err := os.Stat(proxyPath); os.IsNotExist(err) {
 		t.Fatalf("Proxy binary not found at %s", proxyPath)
 	}
