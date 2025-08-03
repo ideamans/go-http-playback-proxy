@@ -54,6 +54,12 @@ cleanup() {
         log_info "Removing temporary directory: $TEMP_DIR"
         rm -rf "$TEMP_DIR"
     fi
+    
+    # コピーしたプロキシバイナリを削除
+    if [ -f "$SCRIPT_DIR/http-playback-proxy" ]; then
+        log_info "Removing copied proxy binary"
+        rm -f "$SCRIPT_DIR/http-playback-proxy"
+    fi
 }
 
 # シグナルハンドラー設定
@@ -164,6 +170,14 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 log_success "Main proxy built successfully"
+
+# Copy proxy binary to integration directory for tests
+log_info "Copying proxy binary to integration directory..."
+cp "$TEMP_DIR/http-playback-proxy" "$SCRIPT_DIR/http-playback-proxy"
+if [ $? -ne 0 ]; then
+    log_error "Failed to copy proxy binary"
+    exit 1
+fi
 
 # テストサーバーのビルドと起動
 log_info "Building and starting test server..."
